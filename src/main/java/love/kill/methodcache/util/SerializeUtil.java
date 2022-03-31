@@ -1,0 +1,47 @@
+package love.kill.methodcache.util;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+
+/**
+ * 序列化工具类
+ *
+ * @author likepan
+ * @version 1.0.0
+ * @since 1.0
+ */
+public class SerializeUtil {
+
+	private static Logger logger = LoggerFactory.getLogger(SerializeUtil.class);
+
+	/*
+	 * 序列化
+	 * */
+	public static byte[] serizlize(Object object) throws IOException {
+		try {
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			new ObjectOutputStream(bos).writeObject(object);
+			return bos.toByteArray();
+		} catch (IOException e) {
+			e.printStackTrace();
+			logger.error("序列化时发生异常：" + e.getMessage());
+			throw e;
+		}
+	}
+
+	/*
+	 * 反序列化
+	 * */
+	public static Object deserialize(byte[] bytes) throws IOException,ClassNotFoundException {
+		try {
+			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+			return new ObjectInputStream(bis).readObject();
+		} catch (IOException | ClassNotFoundException e) {
+			logger.error("反序列化时发生异常：" + e.getMessage());
+			e.printStackTrace();
+			throw e;
+		}
+	}
+}
