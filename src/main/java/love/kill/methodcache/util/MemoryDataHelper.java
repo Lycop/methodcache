@@ -228,40 +228,6 @@ public class MemoryDataHelper implements DataHelper {
 		}
 	}
 
-//	private boolean setData(String key, Object value, long time) {
-//		try {
-//			cacheDataWriteLock.lock();
-//			if(enableLog){
-//				logger.info("\n >>>> 更新缓存至内存 <<<<" +
-//							"\n key：" + key +
-//							"\n 过期时间：" + time +
-//							"\n 数据：" + value +
-//							"\n -----------------------");
-//			}
-//
-//			doRemoveData(key,true);
-//
-//			if(time <= 0L){
-//				// 永久有效
-////				cacheData.put(key, new CacheDataModel(value));
-//			}else {
-//
-//				// 记录缓存数据过期信息
-//				long expireTimeStamp = new Date().getTime() + time;
-//				Set<String> keySet = dataExpireInfo.computeIfAbsent(expireTimeStamp, k -> new HashSet<>());
-//				keySet.add(key);
-//
-//				// 缓存数据
-////				cacheData.put(key, new CacheDataModel(value, expireTimeStamp));
-//			}
-//
-//		} finally {
-//			cacheDataWriteLock.unlock();
-//		}
-//		return true;
-//	}
-
-
 	/**
 	 * 从内存获取数据
 	 *
