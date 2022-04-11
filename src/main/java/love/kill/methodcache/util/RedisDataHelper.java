@@ -5,7 +5,8 @@ import love.kill.methodcache.aspect.CacheMethodAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -24,8 +25,8 @@ public class RedisDataHelper implements DataHelper {
 
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-	RedisUtil redisUtil;
-	MethodcacheProperties methodcacheProperties;
+	private RedisUtil redisUtil;
+	private MethodcacheProperties methodcacheProperties;
 
 	private static boolean enableLog = false;
 
@@ -39,73 +40,81 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(String key ,boolean refreshData , ActualDataFunctional actualDataFunctional) {
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional){
 
-		String redisLockKey = REDIS_LOCK_PREFIX + REDIS_LOCK_CACHE_DATA + key;
+		String methodSignature = method.toGenericString(); // 方法签名
+		Integer argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
+		String argsInfo = Arrays.toString(args);
 
-		Object resultObject;
+		String redisLockKey = REDIS_LOCK_PREFIX + REDIS_LOCK_CACHE_DATA + methodSignature;
+
+		CacheDataModel cacheDataModel;
 		try {
-			resultObject = getDataFromRedis(key);
-			if(enableLog){
-				logger.info("\n >>>> 获取缓存(无锁) <<<<" +
-							"\n key：" + key +
-							"\n 缓存命中：" + (resultObject != null) +
-							"\n -----------------------");
-			}
+			cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
+			log(String.format(  "\n >>>> 获取缓存(无锁) <<<<" +
+								"\n method：%s" +
+								"\n args：%s" +
+								"\n 缓存命中：%s" +
+								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
 
-			if(resultObject == null){
-				// 没有获取到数据，加锁再次尝试获取
+			if(cacheDataModel == null || cacheDataModel.isExpired()){
+				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				while (!redisUtil.lock(redisLockKey)) {}
-				resultObject = getDataFromRedis(key);
-				if(enableLog){
-					logger.info("\n >>>> 获取缓存(加锁) <<<<" +
-								"\n key：" + key +
-								"\n 缓存命中：" + (resultObject != null) +
-								"\n -----------------------");
-				}
+				cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
+				log(String.format(  "\n >>>> 获取缓存(加锁) <<<<" +
+									"\n method：%s" +
+									"\n args：%s" +
+									"\n 缓存命中：%s" +
+									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
 
-				if(resultObject == null){
-					// 没获取到数据，发起实际请求
-					resultObject = actualDataFunctional.getActualData();
-					if(enableLog){
-						logger.info("\n >>>> 发起请求 <<<<" +
-									"\n key：" + key +
-									"\n 数据：" + resultObject +
-									"\n -----------------");
-					}
+				if(cacheDataModel == null || cacheDataModel.isExpired()){
+					// 没获取到数据或者数据已过期，发起实际请求
 
-					if (resultObject != null) {
+					Object data = actualDataFunctional.getActualData();
+					log(String.format(  "\n >>>> 发起请求 <<<<" +
+										"\n method：%s" +
+										"\n args：%s" +
+										"\n 数据：%s" +
+										"\n -----------------------",methodSignature,argsInfo,data));
+
+					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						if(enableLog){
-							logger.info("\n >>>> 更新数据 <<<<" +
-										"\n key：" + key +
-										"\n 过期时间：" + expirationTime +
-										"\n 数据：" + resultObject +
-										"\n ------------------");
-						}
-						redisUtil.set(key, byteArray2String(SerializeUtil.serizlize(resultObject)), expirationTime / 1000);
+						log(String.format(  "\n >>>> 设置缓存 <<<<" +
+											"\n method：%s" +
+											"\n args：%s" +
+											"\n 数据：%s" +
+											"\n 过期时间：%s" +
+											"\n -----------------------",methodSignature,argsInfo,data,expirationTime));
+
+						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 					}
+
+					return data;
 				}
-
-				return resultObject;
-
-			}else {
-
-				if(refreshData){
-					// 刷新数据
-					executorService.execute(()->{
-						try {
-							Object obj = actualDataFunctional.getActualData();
-							if (obj != null) {
-								setData2Redis(key, obj, actualDataFunctional.getExpirationTime());
-							}
-						} catch (Throwable throwable) {
-							throwable.printStackTrace();
-						}
-					});
-				}
-				return resultObject;
 			}
+
+			if(refreshData){
+				// 刷新数据
+				executorService.execute(()->{
+					try {
+						Object data = actualDataFunctional.getActualData();
+						if (data != null) {
+							long expirationTime = actualDataFunctional.getExpirationTime();
+							log(String.format(  "\n >>>> 刷新缓存 <<<<" +
+												"\n method：%s" +
+												"\n args：%s" +
+												"\n 数据：%s" +
+												"\n 过期时间：%s" +
+												"\n -----------------------",method,Arrays.toString(args),data,expirationTime));
+							setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
+						}
+					} catch (Throwable throwable) {
+						throwable.printStackTrace();
+					}
+				});
+			}
+
+			return cacheDataModel.getData();
 
 		}  catch (Exception e) {
 			e.printStackTrace();
@@ -119,47 +128,47 @@ public class RedisDataHelper implements DataHelper {
 		}
 	}
 
-
-	/**
-	 * 数据保存至Redis中
-	 * 这里会对数据进行序列化
-	 * */
-	private boolean setData2Redis(String key, Object value, long time) {
-		try {
-			String redisLockKey = REDIS_LOCK_PREFIX + REDIS_LOCK_CACHE_DATA + key;
-			redisUtil.set(redisLockKey, byteArray2String(SerializeUtil.serizlize(value)),time / 1000);
-			return true;
-
-		}catch (Throwable throwable) {
-			throwable.printStackTrace();
-			logger.info("\n >>>> setData发生异常 <<<<" +
-						"\n 异常信息：" + throwable.getMessage() +
-						"\n ------------------------");
-			return false;
-		}
-
-	}
-
 	/**
 	 * 从Redis获取数据
-	 * 这里会对返回值进行反序列化
+	 *
+	 * @param methodSignature 方法签名
+	 * @param argsHashCode 入参哈希
 	 * */
-	private Object getDataFromRedis(String key) {
-		try {
-			Object object = redisUtil.get(key);
-			if(object instanceof String){
-				return SerializeUtil.deserialize(string2byteArray((String) object));
-			}
-			return null;
+	private CacheDataModel getDataFromRedis(String methodSignature, Integer argsHashCode) {
 
-		} catch (IOException | ClassNotFoundException e) {
-			e.printStackTrace();
-			logger.warn("从 redis 获取数据发生异常：" + e.getMessage());
-			return null;
+		Object objectByteString = redisUtil.hget(methodSignature, Integer.toString(argsHashCode));
+		if(objectByteString != null){
+			Object dataModel = SerializeUtil.deserialize(string2byteArray((String) objectByteString));
+			if(dataModel instanceof CacheDataModel){
+				return (CacheDataModel)dataModel;
+			}
 		}
+		return null;
 	}
 
 
+	/**
+	 * 缓存数据至Redis
+	 *
+	 * @param methodSignature 方法签名
+	 * @param argsHashCode 入参哈希
+	 * @param args 入参信息
+	 * @param data 数据
+	 * @param expireTimeStamp 过期时间
+	 *
+	 * 这里会对返回值进行反序列化
+	 * */
+	private boolean setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
+		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, argsHashCode, args, data, expireTimeStamp);
+		return redisUtil.hset(methodSignature,Integer.toString(argsHashCode),byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
+	}
+
+
+	private void log(String info){
+		if(enableLog){
+			logger.info(info);
+		}
+	}
 
 	private String byteArray2String(byte[] bytes){
 		return Base64.getEncoder().encodeToString(bytes);

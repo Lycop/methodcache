@@ -23,8 +23,36 @@ import java.lang.annotation.Target;
 @Target({ElementType.METHOD})
 public @interface CacheData {
 
+	/**
+	 * 刷新数据
+	 * 本次请求是否要刷新数据，为 true 则在返回数据后，发起线程异步请求并更新数据
+	 * */
 	boolean refresh() default true;
 
+	/**
+	 * 数据过期时间，毫秒
+	 *
+	 * 数据将会在指定时间过期
+	 * */
 	long expiration() default 30000L;
+
+	/**
+	 * 数据过期宽限期，毫秒
+	 *
+	 * 数据宽限过期时间，默认为0L。如果设置了此值大于0，则数据会在{@link #expiration()}基础上进行随机累加。
+	 * 如：过期时间为30000毫秒，过期宽限期为10000毫秒，则数据会在30000～40000之间随机一个值过期。
+	 * 这个值可以避免数据大规模同时失效引起的缓存雪崩
+	 * */
+	long behindExpiration() default 0L;
+
+	/**
+	 *  数据过期时间累加基础
+	 *
+	 *  设置一个类型，作为数据过期计算的基础时间进行累加，可选的范围：
+	 * 	SECOND,MINUTE,HOUR,DAY,MONTH,YEAR
+	 *
+	 *  举个例子：设置BasicExpiration.HOUR，数据返回时间为16:38:22，那么16:38:22~16:59:59是有效的，17:00:00开始计算失效时间。
+	 * */
+	CapitalExpiration capitalExpiration() default CapitalExpiration.SECOND;
 
 }

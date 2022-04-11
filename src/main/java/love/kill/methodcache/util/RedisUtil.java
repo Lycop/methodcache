@@ -3,6 +3,7 @@ package love.kill.methodcache.util;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.StringUtils;
 
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -22,25 +23,15 @@ public class RedisUtil {
 		this.redisTemplate = redisTemplate;
 	}
 
-	/**
-	 * 获取缓存
-	 *
-	 * @param key 键
-	 * @return 值
-	 */
-	public Object get(String key) {
-		return key == null ? null : redisTemplate.opsForValue().get(key);
-	}
 
 
 	/**
-	 * 添加缓存
+	 * 设置数据
 	 *
 	 * @param key   键
 	 * @param value 值
 	 * @return true成功 false失败
 	 */
-	@SuppressWarnings("unchecked")
 	public boolean set(String key, Object value) {
 		try {
 			redisTemplate.opsForValue().set(key, value);
@@ -73,6 +64,56 @@ public class RedisUtil {
 			return false;
 		}
 	}
+
+	/**
+	 * 获取数据
+	 *
+	 * @param key 键
+	 * @return 值
+	 */
+	public Object get(String key) {
+		return key == null ? null : redisTemplate.opsForValue().get(key);
+	}
+
+	/**
+	 * 设置哈希值
+	 *
+	 * @param key 哈希键
+	 * @param field 字段
+	 * @param value 值
+	 * @return true 成功 false 失败
+	 */
+	public boolean hset(String key, String field, Object value) {
+		try {
+			redisTemplate.opsForHash().put(key,field,value);
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
+	}
+
+	/**
+	 * 获取哈希值
+	 *
+	 * @param key 哈希键
+	 * @param field 字段
+	 * @return 值
+	 */
+	public Object hget(String key, String field) {
+		return (key == null || field == null) ? null : redisTemplate.opsForHash().get(key,field);
+	}
+
+	/**
+	 * 获取哈希值
+	 *
+	 * @param key 哈希键
+	 * @return 所有field
+	 */
+	public Set hkeys(String key) {
+		return (key == null) ? null : redisTemplate.opsForHash().keys(key);
+	}
+
 
 	/**
 	 * 加锁

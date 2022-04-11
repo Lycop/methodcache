@@ -16,10 +16,10 @@ public class SerializeUtil {
 
 	private static Logger logger = LoggerFactory.getLogger(SerializeUtil.class);
 
-	/*
+	/**
 	 * 序列化
-	 * */
-	public static byte[] serizlize(Object object) throws IOException {
+	 **/
+	public static byte[] serizlize(Object object){
 		try {
 			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 			new ObjectOutputStream(bos).writeObject(object);
@@ -27,21 +27,21 @@ public class SerializeUtil {
 		} catch (IOException e) {
 			e.printStackTrace();
 			logger.error("序列化时发生异常：" + e.getMessage());
-			throw e;
+			return null;
 		}
 	}
 
-	/*
+	/**
 	 * 反序列化
-	 * */
-	public static Object deserialize(byte[] bytes) throws IOException,ClassNotFoundException {
+	 **/
+	public static Object deserialize(byte[] bytes){
 		try {
 			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
 			return new ObjectInputStream(bis).readObject();
 		} catch (IOException | ClassNotFoundException e) {
-			logger.error("反序列化时发生异常：" + e.getMessage());
 			e.printStackTrace();
-			throw e;
+			logger.error("反序列化时发生异常：" + e.getMessage());
+			return null;
 		}
 	}
 }

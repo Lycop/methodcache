@@ -2,7 +2,9 @@ package love.kill.methodcache.aspect;
 
 import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.annotation.CacheData;
+import love.kill.methodcache.annotation.CapitalExpiration;
 import love.kill.methodcache.util.DataHelper;
+import love.kill.methodcache.util.SerializeUtil;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
@@ -14,9 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 
 /**
@@ -57,20 +58,16 @@ public class CacheMethodAspect {
 		}
 
 		MethodSignature methodSignature = (MethodSignature) signature;
-		Method curMethod = joinPoint.getTarget().getClass().getMethod(methodSignature.getName(), methodSignature.getParameterTypes());
-		CacheData cacheData = curMethod.getAnnotation(CacheData.class);
-
-		Object resultObject;
+		Method method = joinPoint.getTarget().getClass().getMethod(methodSignature.getName(), methodSignature.getParameterTypes());
+		CacheData cacheData = method.getAnnotation(CacheData.class);
 
 		try {
-			boolean refresh = cacheData.refresh();
-			long expiration = cacheData.expiration();
+			boolean refresh = cacheData.refresh(); // 刷新数据
+			long expiration = cacheData.expiration(); // 数据过期时间，毫秒
+			long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
+			CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
 
-
-			Integer argsHashCode = getArgsHashCode(args); // 入参 hash code
-			String curMethodSignature = curMethod.toGenericString(); // 方法签名
-
-			resultObject = dataHelper.getData(curMethodSignature + argsHashCode,refresh,new DataHelper.ActualDataFunctional(){
+			return dataHelper.getData(method,args,refresh,new DataHelper.ActualDataFunctional(){
 				@Autowired
 				public Object getActualData() {
 					try {
@@ -84,11 +81,9 @@ public class CacheMethodAspect {
 
 				@Override
 				public long getExpirationTime() {
-					return expiration;
+					return expirationTime(expiration,behindExpiration,capitalExpiration);
 				}
 			});
-
-			return resultObject;
 
 
 		}catch (Exception e){
@@ -99,102 +94,70 @@ public class CacheMethodAspect {
 		return joinPoint.proceed(args);
 	}
 
-	private Integer getArgsHashCode(Object[] args) throws IllegalAccessException {
-
-		Map<String,Integer> fieldHash = new LinkedHashMap<>();
-
-		for(int i = 0;i < args.length;i++){
-			Object arg = args[i];
-			fieldHash.put("arg" + i,doGetHash(arg));
-
-		}
-		return Objects.hash(fieldHash);
-	}
-
-	private int doGetHash(Object arg) throws IllegalAccessException {
-
-		if(arg == null){
-			return 0;
-		}
-
-		if(isPrimitive(arg.getClass())){
-			// 基本数据类型
-			return Objects.hash(arg);
-
-		}else {
-			// 复杂对象类型
-			Field[] declaredFields = arg.getClass().getDeclaredFields();
-
-			for(Field field : declaredFields){
-				field.setAccessible(true);
-			}
-
-			List<Field> fieldList = new LinkedList<>(Arrays.asList(declaredFields));
-
-			// 按属性排序
-			fieldList.sort(Comparator.comparing(Field::toString));
-
-			Map<String,Integer> fieldHash = new LinkedHashMap<>();
-			for(Field field : fieldList){
-				fieldHash.put(field.toString(),doGetFieldHash(field,arg));
-			}
-			return Objects.hash(fieldHash);
-		}
-	}
 
 
-	private int doGetFieldHash(Field field,Object object) throws IllegalAccessException {
-
-		if(object == null){
-			return 0;
+	private static long expirationTime(long expiration, long behindExpiration, CapitalExpiration capitalExpiration) {
+		Calendar calendar = Calendar.getInstance();
+		switch (capitalExpiration){
+			case YEAR:
+				calendar.set(Calendar.MONTH, 0);;
+			case MONTH:
+				calendar.set(Calendar.DATE,0);
+			case DAY:
+				calendar.set(Calendar.HOUR_OF_DAY,0);
+			case HOUR:
+				calendar.set(Calendar.MINUTE,0);
+			case MINUTE:
+				calendar.set(Calendar.SECOND,0);
 		}
 
-		Class<?> typeClass = field.getType();
-		Object fieldObject = field.get(object);
-
-
-		if(isPrimitive(typeClass) || (typeClass.isAssignableFrom(Collection.class))){
-			// 基本数据类型
-			return Objects.hash(fieldObject);
-
-		} else {
-			// 复杂对象类型
-			Field[] declaredFields = typeClass.getDeclaredFields();
-
-			for(Field innerField : declaredFields){
-				innerField.setAccessible(true);
-			}
-
-			List<Field> fieldList = new LinkedList<>(Arrays.asList(declaredFields));
-
-			// 按属性排序
-			fieldList.sort(Comparator.comparing(Field::toString));
-
-
-			Map<String,Integer> fieldHash = new LinkedHashMap<>();
-			for(Field innerField : fieldList){
-				fieldHash.put(innerField.toString(),doGetFieldHash(innerField,fieldObject));
-			}
-			return Objects.hash(fieldHash);
+		int calendarAddType;
+		switch (capitalExpiration){
+			case MINUTE:
+				calendarAddType = Calendar.MINUTE;
+				break;
+			case HOUR:
+				calendarAddType = Calendar.HOUR_OF_DAY;
+				break;
+			case DAY:
+				calendarAddType = Calendar.DATE;
+				break;
+			case MONTH:
+				calendarAddType = Calendar.MONTH;
+				break;
+			case YEAR:
+				calendarAddType = Calendar.YEAR;
+				break;
+			default:
+				calendarAddType = -1;
 		}
+
+
+
+		if(behindExpiration > 0){
+			expiration += Math.random() * behindExpiration;
+		}
+
+
+		if(calendarAddType != -1){
+			calendar.add(calendarAddType,1);
+		}
+
+		return calendar.getTime().getTime() + expiration;
 	}
 
-
-	private boolean isPrimitive(Class clazz) {
-		return  clazz.isPrimitive() || isInternal(clazz);
+	public static void main(String[] args) {
+		System.out.println(">>>" + expirationTime(30000L,0L,CapitalExpiration.DAY));
 	}
 
-	private boolean isInternal(Class clazz) {
-		return  (Map.class == clazz) ||
-				(List.class == clazz) ||
-				(String.class == clazz) ||
-				(Short.class == clazz) ||
-				(Integer.class == clazz) ||
-				(Long.class == clazz) ||
-				(Float.class == clazz) ||
-				(Double.class == clazz) ||
-				(Character.class == clazz) ||
-				(Boolean.class == clazz);
-	}
-
+//	/**
+//	 * 获取当天0点0分0秒（00:00:00）
+//	 *
+//	 * @return
+//	 */
+//	private static String getTimesmorning() {
+//		Calendar cal = Calendar.getInstance();
+//		cal.set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 0, 0, 0);
+//		System.out.println("！！！" + cal.getTime());
+//	}
 }
