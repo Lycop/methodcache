@@ -55,7 +55,8 @@ public class RedisDataHelper implements DataHelper {
 								"\n method：%s" +
 								"\n args：%s" +
 								"\n 缓存命中：%s" +
-								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
+								"\n 过期时间：%s" +
+								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
 
 			if(cacheDataModel == null || cacheDataModel.isExpired()){
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
@@ -65,7 +66,8 @@ public class RedisDataHelper implements DataHelper {
 									"\n method：%s" +
 									"\n args：%s" +
 									"\n 缓存命中：%s" +
-									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
+									"\n 过期时间：%s" +
+									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null),(cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
 
 				if(cacheDataModel == null || cacheDataModel.isExpired()){
 					// 没获取到数据或者数据已过期，发起实际请求

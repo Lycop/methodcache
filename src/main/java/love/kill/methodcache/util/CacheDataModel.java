@@ -36,9 +36,9 @@ public class CacheDataModel implements Serializable {
 
 	/**
 	 * 过期时间（时间戳）
-	 * 0 代表永久有效
+	 * -1 代表永久有效
 	 * */
-	private long expireTimeStamp = 0L;
+	private long expireTimeStamp = -1L;
 
 	public CacheDataModel(String methodSignature, long argsHashCode, String args, Object data, long expireTimeStamp) {
 		this.methodSignature = methodSignature;
@@ -103,7 +103,7 @@ public class CacheDataModel implements Serializable {
 	}
 
 	public boolean isExpired(){
-		return expireTimeStamp !=0L && new Date().getTime() > expireTimeStamp;
+		return expireTimeStamp >= 0L && new Date().getTime() > expireTimeStamp;
 	}
 
 	@Override

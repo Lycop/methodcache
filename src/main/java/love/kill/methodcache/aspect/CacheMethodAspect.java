@@ -97,6 +97,11 @@ public class CacheMethodAspect {
 
 
 	private static long expirationTime(long expiration, long behindExpiration, CapitalExpiration capitalExpiration) {
+
+		if(expiration < 0L){
+			return -1L;
+		}
+
 		Calendar calendar = Calendar.getInstance();
 		switch (capitalExpiration){
 			case YEAR:
@@ -132,11 +137,7 @@ public class CacheMethodAspect {
 				calendarAddType = -1;
 		}
 
-
-
-		if(behindExpiration > 0){
-			expiration += Math.random() * behindExpiration;
-		}
+		expiration += Math.random() * behindExpiration;
 
 
 		if(calendarAddType != -1){

@@ -35,13 +35,13 @@ public class MemoryDataHelper implements DataHelper {
 	 * 缓存数据
 	 * 格式：<方法签名,<方法入参哈希,数据>>
 	 * */
-	private final static Map<String, Map<String, CacheDataModel>> cacheData = new ConcurrentHashMap<>();
+	private final static Map<String, Map<Integer, CacheDataModel>> cacheData = new ConcurrentHashMap<>();
 
 	/**
 	 * 缓存数据过期信息
 	 * 格式：<过期时间（时间戳，毫秒）,<方法签名,方法入参哈希>>
 	 * */
-	private final static Map<Long, Map<String,Set<String>>> dataExpireInfo = new ConcurrentHashMap<>();
+	private final static Map<Long, Map<String,Set<Integer>>> dataExpireInfo = new ConcurrentHashMap<>();
 
 
 	/**
@@ -52,53 +52,85 @@ public class MemoryDataHelper implements DataHelper {
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
 
-//	static {
-//
-//		/**
-//		 * 开启一个线程，查询并剔除已过期的数据
-//		 * */
-//		Executors.newSingleThreadExecutor().execute(()->{
-//			while (true){
-//				List<Long> expireInfoKeyList;
-//				Set<Long> expireInfoKeySet;
-//				try {
-//					cacheDataReadLock.lock();
-//					expireInfoKeySet = dataExpireInfo.keySet();
-//					if(expireInfoKeySet.size() <= 0){
-//						// 没有过期信息数据
-//						continue;
-//					}
-//					expireInfoKeyList = new ArrayList<>(expireInfoKeySet);
-//				}finally {
-//					cacheDataReadLock.unlock();
-//				}
-//
-//
-//				long nowTimeStamp = new Date().getTime();
-//				expireInfoKeyList.sort((l1, l2) -> (int) (l1 - l2));
-//
-//				for (long expireInfoKey : expireInfoKeyList) {
-//					if (expireInfoKey > nowTimeStamp) {
-//						// 最接近的时间还没到，本次循环跳过
-//						try {
-//							Thread.sleep(500);
-//						} catch (InterruptedException e) {
-//							e.printStackTrace();
-//						}
-//						break;
-//					}
-//
-//					// 移除过期缓存数据
-//					Set<String> invalidCachekeySet = dataExpireInfo.get(expireInfoKey);
-//					for (String invalidCachekey : invalidCachekeySet) {
-//						doRemoveData(invalidCachekey,false);
-//					}
-//					dataExpireInfo.remove(expireInfoKey);
-//				}
-//
-//			}
-//		});
-//	}
+	static {
+
+		/**
+		 * 开启一个线程，查询并剔除已过期的数据
+		 * */
+		Executors.newSingleThreadExecutor().execute(()->{
+			while (true){
+				List<Long> expireTimeStampKeySetKeyList;
+				Set<Long> expireTimeStampKeySet;
+				try {
+					cacheDataLock.lock();
+					expireTimeStampKeySet = dataExpireInfo.keySet();
+					if (expireTimeStampKeySet.size() <= 0) {
+						// 没有过期信息数据
+						continue;
+					}
+
+					expireTimeStampKeySetKeyList = new ArrayList<>(expireTimeStampKeySet);
+					expireTimeStampKeySetKeyList.sort((l1, l2) -> (int) (l1 - l2));
+					long nowTimeStamp = new Date().getTime();
+					for (long expireTimeStamp : expireTimeStampKeySetKeyList) {
+						if (expireTimeStamp > nowTimeStamp) {
+							// 最接近的时间还没到，本次循环跳过
+							break;
+						}
+
+						// 移除过期缓存数据 <过期时间（时间戳，毫秒）,<方法签名,方法入参哈希>>
+						Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp);
+						if(methodArgsHashCodeMap == null || methodArgsHashCodeMap.isEmpty()){
+							continue;
+						}
+						Set<String> methodSignatureSet =  methodArgsHashCodeMap.keySet();
+						for (String methodSignature : methodSignatureSet) {
+							Set<Integer> argsHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
+							for(Integer argsHashCode : argsHashCodeSet){
+								doRemoveData(methodSignature,argsHashCode);
+							}
+
+							methodArgsHashCodeMap.remove(methodSignature);
+						}
+						dataExpireInfo.remove(expireTimeStamp);
+					}
+				} finally {
+					cacheDataLock.unlock();
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		});
+	}
+
+	private static void doRemoveData(String methodSignature, Integer argsHashCode) {
+		try {
+			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
+			if(cacheDataModel != null && cacheDataModel.isExpired()){
+
+				log(String.format(  "\n >>>> 移除缓存 <<<<" +
+									"\n method：%s" +
+									"\n args：%s" +
+									"\n -----------------------",methodSignature,cacheDataModel.getArgs()));
+
+				// <方法签名,<方法入参哈希,数据>>
+				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
+				cacheDataModelMap.remove(argsHashCode);
+				if(cacheDataModelMap.isEmpty()){
+					cacheData.remove(methodSignature);
+				}
+			}
+
+		}catch (Exception e){
+			e.printStackTrace();
+			logger.error("移除数据出现异常：" + e.getMessage());
+		}finally {
+
+		}
+	}
 
 	public MemoryDataHelper(MethodcacheProperties methodcacheProperties) {
 		this.methodcacheProperties = methodcacheProperties;
@@ -119,7 +151,8 @@ public class MemoryDataHelper implements DataHelper {
 								"\n method：%s" +
 								"\n args：%s" +
 								"\n 缓存命中：%s" +
-								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
+								"\n 过期时间：%s" +
+								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
 
 			if(cacheDataModel == null || cacheDataModel.isExpired()){
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
@@ -129,7 +162,8 @@ public class MemoryDataHelper implements DataHelper {
 									"\n method：%s" +
 									"\n args：%s" +
 									"\n 缓存命中：%s" +
-									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null)));
+									"\n 过期时间：%s" +
+									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null),(cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
 
 
 				if(cacheDataModel == null || cacheDataModel.isExpired()){
@@ -234,11 +268,11 @@ public class MemoryDataHelper implements DataHelper {
 	 * @param methodSignature 方法签名
 	 * @param argsHashCode 入参哈希
 	 * */
-	private CacheDataModel getDataFromMemory(String methodSignature, Integer argsHashCode){
+	private static CacheDataModel getDataFromMemory(String methodSignature, Integer argsHashCode){
 
-		Map<String, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
+		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
 		if(cacheDataModelMap != null){
-			return cacheDataModelMap.get(Integer.toString(argsHashCode));
+			return cacheDataModelMap.get(argsHashCode);
 		}
 		return null;
 	}
@@ -258,48 +292,20 @@ public class MemoryDataHelper implements DataHelper {
 	private boolean setDataToMemory(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
 		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, argsHashCode, args, data, expireTimeStamp);
 
-		Map<String, CacheDataModel> cacheDataModelMap = cacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
-		cacheDataModelMap.put(Integer.toString(argsHashCode),cacheDataModel);
+		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
+		cacheDataModelMap.put(argsHashCode,cacheDataModel);
+
+		// 缓存过期时间
+		if (expireTimeStamp > 0L) {
+			// 记录缓存数据过期信息 <过期时间（时间戳，毫秒）,<方法签名,方法入参哈希>>
+			Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.computeIfAbsent(expireTimeStamp, k -> new HashMap<>());
+			methodArgsHashCodeMap.computeIfAbsent(methodSignature,k->new HashSet<>()).add(argsHashCode);
+		}
+
 		return true;
 	}
 
-	private static void doRemoveData(String key,boolean deleteFromExpireInfo){
-
-		try {
-
-
-			if (enableLog) {
-				logger.info("\n >>>> 移除缓存数据 <<<<" +
-							"\n key：" + key +
-							"\n ------------------------");
-			}
-
-			if(deleteFromExpireInfo){
-//				// 从"dataExpireInfo"中删除指定key
-//				CacheDataModel_1 dataModel = cacheData.get(key);
-//				if(dataModel != null){
-//					long expireTimeStamp = dataModel.getExpireTimeStamp();
-//					if(expireTimeStamp != 0){
-//						Set<String> expireInfoSet = dataExpireInfo.get(expireTimeStamp);
-//						if(expireInfoSet != null){
-//							expireInfoSet.remove(key);
-//						}
-//					}
-//				}
-			}
-
-			// 从"cacheData"中删除指定key
-			cacheData.remove(key);
-
-		}catch (Exception e){
-			e.printStackTrace();
-			logger.error("移除数据出现异常：" + e.getMessage());
-		}finally {
-
-		}
-	}
-
-	private void log(String info){
+	private static void log(String info){
 		if(enableLog){
 			logger.info(info);
 		}

@@ -32,7 +32,7 @@ public @interface CacheData {
 	/**
 	 * 数据过期时间，毫秒
 	 *
-	 * 数据将会在指定时间过期
+	 * 数据将会在指定时间过期，小于0表示永久有效
 	 * */
 	long expiration() default 30000L;
 
