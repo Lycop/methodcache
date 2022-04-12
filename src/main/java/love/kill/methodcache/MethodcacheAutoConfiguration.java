@@ -19,15 +19,15 @@ import org.springframework.data.redis.core.RedisTemplate;
 @ConditionalOnProperty(prefix = "methodcache",name = "enable" , havingValue = "true")
 public class MethodcacheAutoConfiguration {
 
-//	@Bean
-//	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R", matchIfMissing = true)
-//	@ConditionalOnMissingBean
-//	@ConditionalOnClass({RedisTemplate.class})
-//	DataHelper redisDataHelper(RedisTemplate redisTemplate,MethodcacheProperties methodcacheProperties){
-//		RedisDataHelper redisDataHelper = new RedisDataHelper(methodcacheProperties);
-//		redisDataHelper.setRedisUtil(new RedisUtil(redisTemplate));
-//		return redisDataHelper;
-//	}
+	@Bean
+	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R", matchIfMissing = true)
+	@ConditionalOnMissingBean
+	@ConditionalOnClass({RedisTemplate.class})
+	DataHelper redisDataHelper(RedisTemplate redisTemplate,MethodcacheProperties methodcacheProperties){
+		RedisDataHelper redisDataHelper = new RedisDataHelper(methodcacheProperties);
+		redisDataHelper.setRedisUtil(new RedisUtil(redisTemplate));
+		return redisDataHelper;
+	}
 
 	@Bean
 	@ConditionalOnMissingBean

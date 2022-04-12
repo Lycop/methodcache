@@ -21,7 +21,7 @@ public class RedisDataHelper implements DataHelper {
 	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
 
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
-	private static final  String REDIS_LOCK_CACHE_DATA = "CACHE_DATA"; // 缓存数据锁
+	private static final  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA"; // 缓存数据
 
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
@@ -46,7 +46,7 @@ public class RedisDataHelper implements DataHelper {
 		Integer argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
 		String argsInfo = Arrays.toString(args);
 
-		String redisLockKey = REDIS_LOCK_PREFIX + REDIS_LOCK_CACHE_DATA + methodSignature;
+		String redisLockKey = REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + methodSignature;
 
 		CacheDataModel cacheDataModel;
 		try {
@@ -138,7 +138,7 @@ public class RedisDataHelper implements DataHelper {
 	 * */
 	private CacheDataModel getDataFromRedis(String methodSignature, Integer argsHashCode) {
 
-		Object objectByteString = redisUtil.hget(methodSignature, Integer.toString(argsHashCode));
+		Object objectByteString = redisUtil.hget(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode));
 		if(objectByteString != null){
 			Object dataModel = SerializeUtil.deserialize(string2byteArray((String) objectByteString));
 			if(dataModel instanceof CacheDataModel){
@@ -162,7 +162,7 @@ public class RedisDataHelper implements DataHelper {
 	 * */
 	private boolean setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
 		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, argsHashCode, args, data, expireTimeStamp);
-		return redisUtil.hset(methodSignature,Integer.toString(argsHashCode),byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
+		return redisUtil.hset(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
 	}
 
 
