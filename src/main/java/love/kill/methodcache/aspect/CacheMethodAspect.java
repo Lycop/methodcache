@@ -4,7 +4,6 @@ import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.annotation.CapitalExpiration;
 import love.kill.methodcache.util.DataHelper;
-import love.kill.methodcache.util.SerializeUtil;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
@@ -14,9 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 
@@ -146,19 +143,4 @@ public class CacheMethodAspect {
 
 		return calendar.getTime().getTime() + expiration;
 	}
-
-	public static void main(String[] args) {
-		System.out.println(">>>" + expirationTime(30000L,0L,CapitalExpiration.DAY));
-	}
-
-//	/**
-//	 * 获取当天0点0分0秒（00:00:00）
-//	 *
-//	 * @return
-//	 */
-//	private static String getTimesmorning() {
-//		Calendar cal = Calendar.getInstance();
-//		cal.set(cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH), 0, 0, 0);
-//		System.out.println("！！！" + cal.getTime());
-//	}
 }
