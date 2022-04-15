@@ -6,8 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -130,6 +129,28 @@ public class RedisDataHelper implements DataHelper {
 		}
 	}
 
+	@Override
+	public List<String> getKeys(){
+		List<String> keyList = new ArrayList<>();
+		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
+		if(hkeys != null){
+			for(Object o : hkeys){
+				if(o instanceof String){
+					keyList.add((String) o);
+				}
+			}
+			return keyList;
+		}
+
+		return keyList;
+	}
+
+	@Override
+	public CacheDataModel getData(String key) {
+		return getDataFromRedis(key);
+	}
+
+
 	/**
 	 * 从Redis获取数据
 	 *
@@ -137,8 +158,19 @@ public class RedisDataHelper implements DataHelper {
 	 * @param argsHashCode 入参哈希
 	 * */
 	private CacheDataModel getDataFromRedis(String methodSignature, Integer argsHashCode) {
+		return getDataFromRedis(methodSignature + "_" + Integer.toString(argsHashCode));
+	}
 
-		Object objectByteString = redisUtil.hget(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode));
+
+	/**
+	 * 从Redis获取数据
+	 *
+	 * @param key 缓存key
+	 * @result key对应的数据
+	 * */
+	private CacheDataModel getDataFromRedis(String key) {
+
+		Object objectByteString = redisUtil.hget(METHOD_CACHE_DATA, key);
 		if(objectByteString != null){
 			Object dataModel = SerializeUtil.deserialize(string2byteArray((String) objectByteString));
 			if(dataModel instanceof CacheDataModel){

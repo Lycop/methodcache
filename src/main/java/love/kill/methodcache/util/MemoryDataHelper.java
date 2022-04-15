@@ -228,6 +228,17 @@ public class MemoryDataHelper implements DataHelper {
 		}
 	}
 
+	@Override
+	public List<String> getKeys() {
+		return new ArrayList<>(cacheData.keySet());
+	}
+
+	@Override
+	public CacheDataModel getData(String key) {
+		// TODO: 2022/4/15  
+		return new CacheDataModel("",0,"");
+	}
+
 	/**
 	 * 从内存获取数据
 	 *

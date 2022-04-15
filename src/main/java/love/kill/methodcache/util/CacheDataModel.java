@@ -1,7 +1,11 @@
 package love.kill.methodcache.util;
 
+import com.alibaba.fastjson.JSONObject;
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 缓存数据模型
@@ -9,6 +13,11 @@ import java.util.Date;
  * @author Lycop
  */
 public class CacheDataModel implements Serializable {
+
+	private static final long serialVersionUID = 1L;
+
+	private static SimpleDateFormat outPrintSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
 	/**
 	 * 方法签名
 	 * */
@@ -113,8 +122,28 @@ public class CacheDataModel implements Serializable {
 				", argsHashCode=" + argsHashCode +
 				", args='" + args + '\'' +
 				", data=" + data +
-				", cacheTime=" + cacheTime +
-				", expireTimeStamp=" + expireTimeStamp +
+				", cacheTime=" + getFormatDate(cacheTime) +
+				", expireTime=" + getFormatDate(expireTimeStamp) +
 				'}';
+	}
+
+
+	public String toJSONString(){
+		Map<String,Object> objectMap = new HashMap<>();
+		objectMap.put("methodSignature",methodSignature);
+		objectMap.put("argsHashCode",argsHashCode);
+		objectMap.put("args",args);
+		objectMap.put("data",data);
+		objectMap.put("cacheTime",getFormatDate(cacheTime));
+		objectMap.put("expireTime",getFormatDate(expireTimeStamp));
+		return JSONObject.toJSONString(objectMap);
+	}
+
+	private String getFormatDate(long timeStamp){
+		try {
+			return outPrintSimpleDateFormat.format(new Date());
+		}catch (Exception e){
+			return String.valueOf(timeStamp);
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package love.kill.methodcache.util;
 
 import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * 数据缓存
@@ -35,4 +36,19 @@ public interface DataHelper {
 		 * */
 		long getExpirationTime();
 	}
+
+	/**
+	 * 获取所有缓存key
+	 *
+	 * @return key
+	 * */
+	List<String> getKeys();
+
+	/**
+	 * 获取数据
+	 *
+	 * @param key 参数
+	 * @return 数据
+	 * */
+	CacheDataModel getData(String key);
 }
