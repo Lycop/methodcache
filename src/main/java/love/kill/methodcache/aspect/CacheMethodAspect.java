@@ -85,6 +85,7 @@ public class CacheMethodAspect {
 
 		}catch (Exception e){
 			logger.error("数据缓存出现异常：" + e.getMessage());
+			e.printStackTrace();
 			joinPoint.proceed(args);
 		}
 

@@ -2,6 +2,8 @@ package love.kill.methodcache.util;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.util.Collections;
 
@@ -17,6 +19,9 @@ public class RedisLockUtil {
 	private final static String REDIS_RESULT_OK = "OK";
 	private final static String REDIS_RESULT_REENTRANT = "REENTRANT";
 	private final static  String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
+
+	private static RedisSerializer<?> argsSerializer = new StringRedisSerializer();
+	private static RedisSerializer<String> resultSerializer = new StringRedisSerializer();
 
 	// 重入锁脚本
 	private final static String reentrantScript =   "if (redis.call('exists', KEYS[1]) == 0) then " + // 不存key，在则直接抢占
@@ -62,7 +67,7 @@ public class RedisLockUtil {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(reentrantScript);
 		defaultRedisScript.setResultType(String.class);
-		String result = (String)redisTemplate.execute(defaultRedisScript,Collections.singletonList(REDIS_LOCK_PREFIX + key),value,String.valueOf(expireTime));
+		String result = (String) redisTemplate.execute(defaultRedisScript,argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value, String.valueOf(expireTime));
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 	}
 
@@ -70,7 +75,7 @@ public class RedisLockUtil {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(releaseScript);
 		defaultRedisScript.setResultType(String.class);
-		String result = (String)redisTemplate.execute(defaultRedisScript,Collections.singletonList(REDIS_LOCK_PREFIX + key),value);
+		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value);
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 
 	}

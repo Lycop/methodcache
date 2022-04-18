@@ -5,7 +5,7 @@
 
 	<groupId>love.kill</groupId>
 	<artifactId>methodcache-spring-boot-starter</artifactId>
-	<version>1.1.0</version>
+	<version>1.1.1</version>
 
 	<name>methodcache-spring-boot-starter</name>
 	<description>Method cache project for Spring Boot</description>
