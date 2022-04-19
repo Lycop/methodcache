@@ -48,60 +48,72 @@ public class RedisDataHelper implements DataHelper {
 		String redisLockKey = REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + methodSignature;
 
 		CacheDataModel cacheDataModel;
-		try {
+
 			cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
-			log(String.format(  "\n >>>> 获取缓存(无锁) <<<<" +
+			log(String.format(  "\n >>>> 从Redis获取缓存 <<<<" +
 								"\n method：%s" +
 								"\n args：%s" +
 								"\n 缓存命中：%s" +
 								"\n 过期时间：%s" +
 								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
 
-			if(cacheDataModel == null || cacheDataModel.isExpired()){
+		if (cacheDataModel == null || cacheDataModel.isExpired()) {
+			try {
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				while (!redisUtil.lock(redisLockKey)) {}
 				cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
-				log(String.format(  "\n >>>> 获取缓存(加锁) <<<<" +
-									"\n method：%s" +
-									"\n args：%s" +
-									"\n 缓存命中：%s" +
-									"\n 过期时间：%s" +
-									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null),(cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
+				log(String.format("\n >>>> 从Redis获取缓存(加锁) <<<<" +
+						"\n method：%s" +
+						"\n args：%s" +
+						"\n 缓存命中：%s" +
+						"\n 过期时间：%s" +
+						"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
 
-				if(cacheDataModel == null || cacheDataModel.isExpired()){
+				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
 
 					Object data = actualDataFunctional.getActualData();
-					log(String.format(  "\n >>>> 发起请求 <<<<" +
-										"\n method：%s" +
-										"\n args：%s" +
-										"\n 数据：%s" +
-										"\n -----------------------",methodSignature,argsInfo,data));
+					log(String.format("\n >>>> 发起请求 <<<<" +
+							"\n method：%s" +
+							"\n args：%s" +
+							"\n 数据：%s" +
+							"\n -----------------------", methodSignature, argsInfo, data));
 
 					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format(  "\n >>>> 设置缓存 <<<<" +
-											"\n method：%s" +
-											"\n args：%s" +
-											"\n 数据：%s" +
-											"\n 过期时间：%s" +
-											"\n -----------------------",methodSignature,argsInfo,data,expirationTime));
+						log(String.format("\n >>>> 设置缓存至Redis <<<<" +
+								"\n method：%s" +
+								"\n args：%s" +
+								"\n 数据：%s" +
+								"\n 过期时间：%s" +
+								"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
 
 						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 					}
 
 					return data;
 				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				logger.info("\n >>>> 获取数据发生异常 <<<<" +
+							"\n 异常信息：" + e.getMessage() +
+							"\n ---------------------------");
+				return null;
+
+			} finally {
+				redisUtil.unlock(redisLockKey);
 			}
+		}
 
 			if(refreshData){
 				// 刷新数据
 				executorService.execute(()->{
 					try {
+						while (!redisUtil.lock(redisLockKey)) {}
 						Object data = actualDataFunctional.getActualData();
 						if (data != null) {
 							long expirationTime = actualDataFunctional.getExpirationTime();
-							log(String.format(  "\n >>>> 刷新缓存 <<<<" +
+							log(String.format(  "\n >>>> 刷新缓存至Redis <<<<" +
 												"\n method：%s" +
 												"\n args：%s" +
 												"\n 数据：%s" +
@@ -111,22 +123,18 @@ public class RedisDataHelper implements DataHelper {
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
+						logger.info("\n >>>> 异步更新数据至Redis发生异常 <<<<" +
+									"\n 异常信息：" + throwable.getMessage() +
+									"\n ---------------------------");
+					} finally {
+						redisUtil.unlock(redisLockKey);
 					}
 				});
 			}
 
 			return cacheDataModel.getData();
 
-		}  catch (Exception e) {
-			e.printStackTrace();
-			logger.info("\n >>>> getData发生运行异常 <<<<" +
-						"\n 异常信息：" + e.getMessage() +
-						"\n ---------------------------");
-			return null;
 
-		} finally {
-			redisUtil.unlock(redisLockKey);
-		}
 	}
 
 	@Override

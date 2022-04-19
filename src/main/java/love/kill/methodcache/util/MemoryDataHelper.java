@@ -145,45 +145,47 @@ public class MemoryDataHelper implements DataHelper {
 		String argsInfo = Arrays.toString(args);
 
 		CacheDataModel cacheDataModel;
-		try {
+
 			cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
-			log(String.format(  "\n >>>> 获取缓存(无锁) <<<<" +
+			log(String.format(  "\n >>>> 从内存中获取缓存 <<<<" +
 								"\n method：%s" +
 								"\n args：%s" +
 								"\n 缓存命中：%s" +
 								"\n 过期时间：%s" +
 								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
 
-			if(cacheDataModel == null || cacheDataModel.isExpired()){
+
+		if (cacheDataModel == null || cacheDataModel.isExpired()) {
+			try {
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				cacheDataLock.lock();
-				cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
-				log(String.format(  "\n >>>> 获取缓存(加锁) <<<<" +
-									"\n method：%s" +
-									"\n args：%s" +
-									"\n 缓存命中：%s" +
-									"\n 过期时间：%s" +
-									"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null),(cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
+				cacheDataModel = getDataFromMemory(methodSignature, argsHashCode);
+				log(String.format("\n >>>> 从内存获取缓存(加锁) <<<<" +
+						"\n method：%s" +
+						"\n args：%s" +
+						"\n 缓存命中：%s" +
+						"\n 过期时间：%s" +
+						"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
 
 
-				if(cacheDataModel == null || cacheDataModel.isExpired()){
+				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
 
 					Object data = actualDataFunctional.getActualData();
-					log(String.format(  "\n >>>> 发起请求 <<<<" +
-										"\n method：%s" +
-										"\n args：%s" +
-										"\n 数据：%s" +
-										"\n -----------------------",methodSignature,argsInfo,data));
+					log(String.format("\n >>>> 发起请求 <<<<" +
+							"\n method：%s" +
+							"\n args：%s" +
+							"\n 数据：%s" +
+							"\n -----------------------", methodSignature, argsInfo, data));
 
 					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format(  "\n >>>> 设置缓存 <<<<" +
+						log(String.format("\n >>>> 设置缓存至内存 <<<<" +
 								"\n method：%s" +
 								"\n args：%s" +
 								"\n 数据：%s" +
 								"\n 过期时间：%s" +
-								"\n -----------------------",methodSignature,argsInfo,data,expirationTime));
+								"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
 
 						setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 
@@ -191,41 +193,49 @@ public class MemoryDataHelper implements DataHelper {
 
 					return data;
 				}
+			} catch (Exception e) {
+				e.printStackTrace();
+				logger.info("\n >>>> 获取数据发生异常 <<<<" +
+						"\n 异常信息：" + e.getMessage() +
+						"\n ---------------------------");
+				return null;
+
+			} finally {
+				cacheDataLock.unlock();
 			}
+		}
+
 
 			if(refreshData){
 				// 刷新数据
 				executorService.execute(()->{
 					try {
+						cacheDataLock.lock();
 						Object data = actualDataFunctional.getActualData();
 						if (data != null) {
 							long expirationTime = actualDataFunctional.getExpirationTime();
-							log(String.format(  "\n >>>> 刷新缓存 <<<<" +
-									"\n method：%s" +
-									"\n args：%s" +
-									"\n 数据：%s" +
-									"\n 过期时间：%s" +
-									"\n -----------------------",method,Arrays.toString(args),data,expirationTime));
+							log(String.format(  "\n >>>> 刷新缓存至内存 <<<<" +
+												"\n method：%s" +
+												"\n args：%s" +
+												"\n 数据：%s" +
+												"\n 过期时间：%s" +
+												"\n -----------------------",method,Arrays.toString(args),data,expirationTime));
 
 							setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
+						logger.info("\n >>>> 异步更新数据至内存发生异常 <<<<" +
+									"\n 异常信息：" + throwable.getMessage() +
+									"\n ---------------------------");
+					}finally {
+						cacheDataLock.unlock();
 					}
 				});
 			}
 			return cacheDataModel.getData();
 
-		} catch (Exception e) {
-			e.printStackTrace();
-			logger.info("\n >>>> getData发生运行异常 <<<<" +
-						"\n 异常信息：" + e.getMessage() +
-						"\n ---------------------------");
-			return null;
 
-		} finally {
-			cacheDataLock.unlock();
-		}
 	}
 
 	@Override

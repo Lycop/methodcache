@@ -48,13 +48,6 @@
 	<dependencies>
 
 		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-web</artifactId>
-			<version>5.2.9.RELEASE</version>
-			<scope>compile</scope>
-		</dependency>
-
-		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-autoconfigure</artifactId>
 			<version>2.2.10.RELEASE</version>
@@ -66,7 +59,6 @@
 			<version>5.2.9.RELEASE</version>
 			<scope>compile</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>org.aspectj</groupId>
 			<artifactId>aspectjweaver</artifactId>
@@ -93,13 +85,6 @@
 			<version>5.2.2.RELEASE</version>
 			<scope>compile</scope>
 		</dependency>
-
-		<dependency>
-			<groupId>com.alibaba</groupId>
-			<artifactId>fastjson</artifactId>
-			<version>1.2.73</version>
-		</dependency>
-
 	</dependencies>
 
 	<profiles>
