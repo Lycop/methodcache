@@ -22,7 +22,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 public class MethodcacheAutoConfiguration {
 
 	@Bean
-	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R"/*, matchIfMissing = true*/)
+	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
 	DataHelper redisDataHelper(RedisTemplate redisTemplate,MethodcacheProperties methodcacheProperties){
