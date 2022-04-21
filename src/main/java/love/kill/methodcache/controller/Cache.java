@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 缓存数据
@@ -16,7 +17,6 @@ import java.util.List;
 @RequestMapping("/methodcache/cache")
 public class Cache {
 
-
 	@Autowired
 	private DataHelper dataHelper;
 
@@ -26,9 +26,8 @@ public class Cache {
 	 * @param key 筛选
 	 * */
 	@GetMapping("/keys")
-	public List<String> keys(String key){
-		// TODO: 2022/4/15
-		return dataHelper.getKeys();
+	public List<Map<String,String>> keys(@RequestParam(value = "key", required = false) String key) {
+		return dataHelper.getKeys(key);
 	}
 
 	/**

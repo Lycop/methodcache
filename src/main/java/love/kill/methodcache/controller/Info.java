@@ -13,7 +13,7 @@ import java.util.Map;
  * @author Lycop
  */
 @RestController
-@RequestMapping("/methodcache")
+@RequestMapping("/methodcache/cache")
 public class Info {
 	@GetMapping("/version")
 	public Map version(){

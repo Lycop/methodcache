@@ -4,6 +4,7 @@ import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.aspect.CacheMethodAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
@@ -62,31 +63,31 @@ public class RedisDataHelper implements DataHelper {
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				while (!redisUtil.lock(redisLockKey)) {}
 				cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
-				log(String.format("\n >>>> 从Redis获取缓存(加锁) <<<<" +
-						"\n method：%s" +
-						"\n args：%s" +
-						"\n 缓存命中：%s" +
-						"\n 过期时间：%s" +
-						"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
+				log(String.format(	"\n >>>> 从Redis获取缓存(加锁) <<<<" +
+									"\n method：%s" +
+									"\n args：%s" +
+									"\n 缓存命中：%s" +
+									"\n 过期时间：%s" +
+									"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
 
 				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
 
 					Object data = actualDataFunctional.getActualData();
-					log(String.format("\n >>>> 发起请求 <<<<" +
-							"\n method：%s" +
-							"\n args：%s" +
-							"\n 数据：%s" +
-							"\n -----------------------", methodSignature, argsInfo, data));
+					log(String.format(	"\n >>>> 发起请求 <<<<" +
+										"\n method：%s" +
+										"\n args：%s" +
+										"\n 数据：%s" +
+										"\n -----------------------", methodSignature, argsInfo, data));
 
 					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format("\n >>>> 设置缓存至Redis <<<<" +
-								"\n method：%s" +
-								"\n args：%s" +
-								"\n 数据：%s" +
-								"\n 过期时间：%s" +
-								"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
+						log(String.format(	"\n >>>> 设置缓存至Redis <<<<" +
+											"\n method：%s" +
+											"\n args：%s" +
+											"\n 数据：%s" +
+											"\n 过期时间：%s" +
+											"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
 
 						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 					}
@@ -138,16 +139,29 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public List<String> getKeys(){
-		List<String> keyList = new ArrayList<>();
+	public List<Map<String, String>> getKeys(String key){
+		List<Map<String,String>> keyList = new ArrayList<>();
 		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
 		if(hkeys != null){
-			for(Object o : hkeys){
-				if(o instanceof String){
-					keyList.add((String) o);
+			for(Object item : hkeys){
+				if(item instanceof String){
+					String itemKey = (String) item;
+					String itemHashCode = String.valueOf(itemKey.hashCode());
+					if(!StringUtils.isEmpty(key)){
+						if(itemKey.contains(key) || itemHashCode.contains(key)){
+							Map<String, String> keyMap = new HashMap<>();
+							keyMap.put("key",itemKey);
+							keyMap.put("hash",itemHashCode);
+							keyList.add(keyMap);
+						}
+					}else {
+						Map<String, String> keyMap = new HashMap<>();
+						keyMap.put("key",itemKey);
+						keyMap.put("hash",itemHashCode);
+						keyList.add(keyMap);
+					}
 				}
 			}
-			return keyList;
 		}
 
 		return keyList;
@@ -201,7 +215,7 @@ public class RedisDataHelper implements DataHelper {
 	 * 这里会对返回值进行反序列化
 	 * */
 	private boolean setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
-		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, argsHashCode, args, data, expireTimeStamp);
+		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, (long) methodSignature.hashCode(), args, argsHashCode, data, expireTimeStamp);
 		return redisUtil.hset(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
 	}
 

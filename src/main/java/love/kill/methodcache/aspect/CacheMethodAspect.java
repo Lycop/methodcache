@@ -24,9 +24,7 @@ import java.util.*;
 public class CacheMethodAspect {
 
 	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
-
-
-
+	
 	private MethodcacheProperties methodcacheProperties;
 
 	private DataHelper dataHelper;

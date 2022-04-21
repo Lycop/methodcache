@@ -2,6 +2,7 @@ package love.kill.methodcache.util;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 数据缓存
@@ -42,7 +43,7 @@ public interface DataHelper {
 	 *
 	 * @return key
 	 * */
-	List<String> getKeys();
+	List<Map<String,String>> getKeys(String key);
 
 	/**
 	 * 获取数据

@@ -14,14 +14,12 @@ public class DataUtil {
 
 		Map<String, Integer> fieldHash = new LinkedHashMap<>();
 		try {
-
 			for (int i = 0; i < args.length; i++) {
 				Object arg = args[i];
 				fieldHash.put("arg" + i, doGetHash(arg));
 			}
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
-			return null;
 		}
 		return Objects.hash(fieldHash);
 	}
