@@ -1,4 +1,4 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
 
 import java.io.Serializable;
 import java.util.Date;

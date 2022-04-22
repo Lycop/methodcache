@@ -1,17 +1,21 @@
 package love.kill.methodcache;
 
-import love.kill.methodcache.aspect.CacheMethodAspect;
-import love.kill.methodcache.util.DataHelper;
-import love.kill.methodcache.util.MemoryDataHelper;
-import love.kill.methodcache.util.RedisDataHelper;
+import love.kill.methodcache.advisor.CacheDataInterceptor;
+import love.kill.methodcache.advisor.CacheDataPointcutAdvisor;
+import love.kill.methodcache.datahelper.DataHelper;
+import love.kill.methodcache.datahelper.MemoryDataHelper;
+import love.kill.methodcache.datahelper.RedisDataHelper;
 import love.kill.methodcache.util.RedisUtil;
+import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Role;
 import org.springframework.data.redis.core.RedisTemplate;
 
 @Configuration
@@ -36,10 +40,21 @@ public class MethodcacheAutoConfiguration {
 	}
 
 	@Bean
-	@ConditionalOnClass({DataHelper.class})
-	CacheMethodAspect cacheMethodAspect(MethodcacheProperties methodcacheProperties,@Autowired(required = false) DataHelper dataHelper){
-		CacheMethodAspect cacheMethodAspect = new CacheMethodAspect(methodcacheProperties);
-		cacheMethodAspect.setDataHelper(dataHelper);
-		return cacheMethodAspect;
+	@Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+	public DefaultAdvisorAutoProxyCreator defaultAdvisorAutoProxyCreator() {
+		return new DefaultAdvisorAutoProxyCreator();
+	}
+
+	@Bean
+	public CacheDataPointcutAdvisor methodPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor,MethodcacheProperties methodcacheProperties) {
+		CacheDataPointcutAdvisor advisor = new CacheDataPointcutAdvisor();
+		advisor.setAdvice(cacheDataInterceptor);
+		advisor.setOrder(methodcacheProperties.getOrder());
+		return advisor;
+	}
+
+	@Bean
+	public CacheDataInterceptor cacheDataInterceptor(MethodcacheProperties methodcacheProperties, @Autowired(required = false) DataHelper dataHelper) {
+		return new CacheDataInterceptor(methodcacheProperties,dataHelper);
 	}
 }

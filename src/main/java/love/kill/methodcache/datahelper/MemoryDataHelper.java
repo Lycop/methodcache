@@ -1,7 +1,7 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
 
 import love.kill.methodcache.MethodcacheProperties;
-import love.kill.methodcache.aspect.CacheMethodAspect;
+import love.kill.methodcache.util.DataUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class MemoryDataHelper implements DataHelper {
 
-	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
-
+	private static Logger logger = LoggerFactory.getLogger(MemoryDataHelper.class);
 
 	/**
 	 * 属性配置
@@ -106,31 +105,6 @@ public class MemoryDataHelper implements DataHelper {
 		});
 	}
 
-	private static void doRemoveData(String methodSignature, Integer argsHashCode) {
-		try {
-			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
-			if(cacheDataModel != null && cacheDataModel.isExpired()){
-
-				log(String.format(  "\n >>>> 移除缓存 <<<<" +
-									"\n method：%s" +
-									"\n args：%s" +
-									"\n -----------------------",methodSignature,cacheDataModel.getArgs()));
-
-				// <方法签名,<方法入参哈希,数据>>
-				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
-				cacheDataModelMap.remove(argsHashCode);
-				if(cacheDataModelMap.isEmpty()){
-					cacheData.remove(methodSignature);
-				}
-			}
-
-		}catch (Exception e){
-			e.printStackTrace();
-			logger.error("移除数据出现异常：" + e.getMessage());
-		}finally {
-
-		}
-	}
 
 	public MemoryDataHelper(MethodcacheProperties methodcacheProperties) {
 		this.methodcacheProperties = methodcacheProperties;
@@ -147,12 +121,17 @@ public class MemoryDataHelper implements DataHelper {
 		CacheDataModel cacheDataModel;
 
 			cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
-			log(String.format(  "\n >>>> 从内存中获取缓存 <<<<" +
-								"\n method：%s" +
-								"\n args：%s" +
-								"\n 缓存命中：%s" +
-								"\n 过期时间：%s" +
-								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
+			log(String.format(  "\n ************* CacheData *************" +
+								"\n **--------- 从内存中获取缓存 ------- **" +
+								"\n ** 方法签名：%s" +
+								"\n ** 方法入参：%s" +
+								"\n ** 缓存命中：%s" +
+								"\n ** 过期时间：%s" +
+								"\n *************************************",
+					methodSignature,
+					argsInfo,
+					cacheDataModel != null ? "是":"否",
+					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
 
 
 		if (cacheDataModel == null || cacheDataModel.isExpired()) {
@@ -160,32 +139,46 @@ public class MemoryDataHelper implements DataHelper {
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				cacheDataLock.lock();
 				cacheDataModel = getDataFromMemory(methodSignature, argsHashCode);
-				log(String.format("\n >>>> 从内存获取缓存(加锁) <<<<" +
-						"\n method：%s" +
-						"\n args：%s" +
-						"\n 缓存命中：%s" +
-						"\n 过期时间：%s" +
-						"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "-" : cacheDataModel.getExpireTimeStamp())));
+				log(String.format(	"\n ************* CacheData *************" +
+									"\n **------- 从内存获取缓存(加锁) ----- **" +
+									"\n ** 方法签名：%s" +
+									"\n ** 方法入参：%s" +
+									"\n ** 缓存命中：%s" +
+									"\n ** 过期时间：%s" +
+									"\n *************************************",
+						methodSignature,
+						argsInfo,
+						cacheDataModel != null ? "是":"否",
+						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
 
 
 				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
 
 					Object data = actualDataFunctional.getActualData();
-					log(String.format("\n >>>> 发起请求 <<<<" +
-							"\n method：%s" +
-							"\n args：%s" +
-							"\n 数据：%s" +
-							"\n -----------------------", methodSignature, argsInfo, data));
+					log(String.format(	"\n ************* CacheData *************"+
+										"\n ** ----------- 发起请求 ----------- **" +
+										"\n ** 方法签名：%s" +
+										"\n ** 方法入参：%s" +
+										"\n ** 返回数据：%s" +
+										"\n *************************************",
+							methodSignature,
+							argsInfo,
+							data));
 
 					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format("\n >>>> 设置缓存至内存 <<<<" +
-								"\n method：%s" +
-								"\n args：%s" +
-								"\n 数据：%s" +
-								"\n 过期时间：%s" +
-								"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
+						log(String.format(	"\n ************* CacheData *************" +
+											"\n ** --------- 设置缓存至内存 -------- **" +
+											"\n ** 方法签名：%s" +
+											"\n ** 方法入参：%s" +
+											"\n ** 缓存数据：%s" +
+											"\n ** 过期时间：%s" +
+											"\n *************************************",
+								methodSignature,
+								argsInfo,
+								data,
+								formatDate(expirationTime)));
 
 						setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 
@@ -195,9 +188,10 @@ public class MemoryDataHelper implements DataHelper {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				logger.info("\n >>>> 获取数据发生异常 <<<<" +
-						"\n 异常信息：" + e.getMessage() +
-						"\n ---------------------------");
+				logger.info("\n ************* CacheData *************" +
+							"\n ** -------- 获取数据发生异常 ------- **" +
+							"\n ** 异常信息：" + e.getMessage() +
+							"\n *************************************");
 				return null;
 
 			} finally {
@@ -214,28 +208,32 @@ public class MemoryDataHelper implements DataHelper {
 						Object data = actualDataFunctional.getActualData();
 						if (data != null) {
 							long expirationTime = actualDataFunctional.getExpirationTime();
-							log(String.format(  "\n >>>> 刷新缓存至内存 <<<<" +
-												"\n method：%s" +
-												"\n args：%s" +
-												"\n 数据：%s" +
-												"\n 过期时间：%s" +
-												"\n -----------------------",method,Arrays.toString(args),data,expirationTime));
+							log(String.format(  "\n ************* CacheData *************" +
+												"\n ** --------- 刷新缓存至内存 -------- **" +
+												"\n ** 方法签名：%s" +
+												"\n ** 方法入参：%s" +
+												"\n ** 缓存数据：%s" +
+												"\n ** 过期时间：%s" +
+												"\n *************************************",
+									method,
+									Arrays.toString(args),
+									data,
+									formatDate(expirationTime)));
 
 							setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
-						logger.info("\n >>>> 异步更新数据至内存发生异常 <<<<" +
+						logger.info("\n ************* CacheData *************" +
+									"\n ** ---- 异步更新数据至内存发生异常 --- **" +
 									"\n 异常信息：" + throwable.getMessage() +
-									"\n ---------------------------");
+									"\n *************************************");
 					}finally {
 						cacheDataLock.unlock();
 					}
 				});
 			}
 			return cacheDataModel.getData();
-
-
 	}
 
 	/**
@@ -279,6 +277,38 @@ public class MemoryDataHelper implements DataHelper {
 		}
 
 		return true;
+	}
+
+	/**
+	 * 移除过期数据
+	 * */
+	private static void doRemoveData(String methodSignature, Integer argsHashCode) {
+		try {
+			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
+			if(cacheDataModel != null && cacheDataModel.isExpired()){
+
+				log(String.format(  "\n ************* CacheData *************" +
+									"\n ** ------------ 移除缓存 ---------- **" +
+									"\n ** 方法签名：%s" +
+									"\n ** 方法入参：%s" +
+									"\n *************************************",
+						methodSignature,
+						cacheDataModel.getArgs()));
+
+				// <方法签名,<方法入参哈希,数据>>
+				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
+				cacheDataModelMap.remove(argsHashCode);
+				if(cacheDataModelMap.isEmpty()){
+					cacheData.remove(methodSignature);
+				}
+			}
+
+		}catch (Exception e){
+			e.printStackTrace();
+			logger.error(	"\n ************* CacheData *************" +
+							"\n ** 移除数据出现异常：" + e.getMessage() +
+							"\n *************************************");
+		}
 	}
 
 	private static void log(String info){
