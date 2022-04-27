@@ -1,6 +1,11 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +17,9 @@ import java.util.Map;
  * @since 1.0
  */
 public interface DataHelper {
+
+	SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
 
 	/**
 	 * 获取数据
@@ -52,4 +60,13 @@ public interface DataHelper {
 	 * @return 数据
 	 * */
 	CacheDataModel getData(String key);
+
+	default String formatDate(long timeStamp){
+		try {
+			return formatDate.format(new Date(timeStamp));
+		}catch (Exception e){
+			e.printStackTrace();
+			return String.valueOf(timeStamp);
+		}
+	}
 }

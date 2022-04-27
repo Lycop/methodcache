@@ -3,28 +3,34 @@ package love.kill.methodcache.aspect;
 import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.annotation.CapitalExpiration;
-import love.kill.methodcache.util.DataHelper;
-import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.Signature;
-import org.aspectj.lang.annotation.Around;
-import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
+import love.kill.methodcache.datahelper.DataHelper;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.lang.reflect.Method;
-import java.util.*;
-
+import java.util.Calendar;
 
 /**
- * 数据缓存拦截器
- **/
-@Aspect
-public class CacheMethodAspect {
+ * CacheData 拦截通知
+ *
+ * 对 @CacheData 注解方法进行拦截，根据方法入参进行匹配，如果匹配命中且缓存数据未过期，则返回缓存数据
+ *
+ * @author Lycop
+ */
+public class CacheDataInterceptor implements MethodInterceptor {
 
+	private static Logger logger = LoggerFactory.getLogger(CacheDataInterceptor.class);
+
+	MethodcacheProperties methodcacheProperties;
+
+	DataHelper dataHelper;
+
+	public CacheDataInterceptor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
-	
+
 	private MethodcacheProperties methodcacheProperties;
 
 	private DataHelper dataHelper;
@@ -41,19 +47,15 @@ public class CacheMethodAspect {
 		this.dataHelper = dataHelper;
 	}
 
-	/**
-	 * 方法缓存
-	 */
-	@Around("@annotation(love.kill.methodcache.annotation.CacheData)")
-	public Object methodcache(ProceedingJoinPoint joinPoint) throws Throwable {
-		Object[] args = joinPoint.getArgs(); //方法入参实体
-		Signature signature = joinPoint.getSignature();
-		if(!methodcacheProperties.isEnable() || !(signature instanceof MethodSignature)){
-			return joinPoint.proceed(args);
+	@Override
+	public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+
+		if(!methodcacheProperties.isEnable()){
+			return methodInvocation.proceed();
 		}
 
-		MethodSignature methodSignature = (MethodSignature) signature;
-		Method method = joinPoint.getTarget().getClass().getMethod(methodSignature.getName(), methodSignature.getParameterTypes());
+		Object[] args = methodInvocation.getArguments(); //方法入参实体
+		Method method = methodInvocation.getMethod();
 		CacheData cacheData = method.getAnnotation(CacheData.class);
 
 		try {
@@ -66,9 +68,9 @@ public class CacheMethodAspect {
 				@Autowired
 				public Object getActualData() {
 					try {
-						return joinPoint.proceed(args);
+						return methodInvocation.proceed();
 					} catch (Throwable throwable) {
-						// TODO: 2022/3/23  
+						// TODO: 2022/3/23
 						throwable.printStackTrace();
 					}
 					return null;
@@ -84,14 +86,15 @@ public class CacheMethodAspect {
 		}catch (Exception e){
 			logger.error("数据缓存出现异常：" + e.getMessage());
 			e.printStackTrace();
-			joinPoint.proceed(args);
 		}
 
-		return joinPoint.proceed(args);
+		return methodInvocation.proceed();
 	}
 
 
-
+	/**
+	 *
+	 * */
 	private static long expirationTime(long expiration, long behindExpiration, CapitalExpiration capitalExpiration) {
 
 		if(expiration < 0L){

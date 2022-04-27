@@ -1,4 +1,4 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
 
 import com.alibaba.fastjson.JSONObject;
 import java.io.Serializable;

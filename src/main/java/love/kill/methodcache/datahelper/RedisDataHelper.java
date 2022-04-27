@@ -1,7 +1,9 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
 
 import love.kill.methodcache.MethodcacheProperties;
-import love.kill.methodcache.aspect.CacheMethodAspect;
+import love.kill.methodcache.util.DataUtil;
+import love.kill.methodcache.util.RedisUtil;
+import love.kill.methodcache.util.SerializeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -18,7 +20,7 @@ import java.util.concurrent.Executors;
  */
 public class RedisDataHelper implements DataHelper {
 
-	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
+	private static Logger logger = LoggerFactory.getLogger(RedisDataHelper.class);
 
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
 	private static final  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA"; // 缓存数据
@@ -51,43 +53,62 @@ public class RedisDataHelper implements DataHelper {
 		CacheDataModel cacheDataModel;
 
 			cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
-			log(String.format(  "\n >>>> 从Redis获取缓存 <<<<" +
-								"\n method：%s" +
-								"\n args：%s" +
-								"\n 缓存命中：%s" +
-								"\n 过期时间：%s" +
-								"\n -----------------------",methodSignature,argsInfo,(cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
+			log(String.format(  "\n ************* CacheData *************" +
+								"\n ** ------- 从Redis获取缓存 -------- **" +
+								"\n ** 方法签名：%s" +
+								"\n ** 方法入参：%s" +
+								"\n ** 缓存命中：%s" +
+								"\n ** 过期时间：%s" +
+								"\n *************************************",
+					methodSignature,
+					argsInfo,
+					cacheDataModel != null ? "是":"否",
+					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
 
 		if (cacheDataModel == null || cacheDataModel.isExpired()) {
 			try {
 				// 没有获取到数据或者数据已过期，加锁再次尝试获取
 				while (!redisUtil.lock(redisLockKey)) {}
 				cacheDataModel = getDataFromRedis(methodSignature, argsHashCode);
-				log(String.format(	"\n >>>> 从Redis获取缓存(加锁) <<<<" +
-									"\n method：%s" +
-									"\n args：%s" +
-									"\n 缓存命中：%s" +
-									"\n 过期时间：%s" +
-									"\n -----------------------", methodSignature, argsInfo, (cacheDataModel != null), (cacheDataModel == null ? "" : cacheDataModel.getExpireTimeStamp())));
+				log(String.format(	"\n ************* CacheData *************" +
+									"\n ** ------ 从Redis获取缓存(加锁) ---- **" +
+									"\n ** 方法签名：%s" +
+									"\n ** 方法入参：%s" +
+									"\n ** 缓存命中：%s" +
+									"\n ** 过期时间：%s" +
+									"\n *************************************",
+						methodSignature,
+						argsInfo,
+						cacheDataModel != null ? "是":"否",
+						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
 
 				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
 
 					Object data = actualDataFunctional.getActualData();
-					log(String.format(	"\n >>>> 发起请求 <<<<" +
-										"\n method：%s" +
-										"\n args：%s" +
-										"\n 数据：%s" +
-										"\n -----------------------", methodSignature, argsInfo, data));
+					log(String.format(	"\n ************* CacheData *************" +
+										"\n ** ----------- 发起请求 ----------- **" +
+										"\n ** 方法签名：%s" +
+										"\n ** 方法入参：%s" +
+										"\n ** 返回数据：%s" +
+										"\n *************************************",
+							methodSignature,
+							argsInfo,
+							data));
 
 					if (data != null) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format(	"\n >>>> 设置缓存至Redis <<<<" +
-											"\n method：%s" +
-											"\n args：%s" +
-											"\n 数据：%s" +
-											"\n 过期时间：%s" +
-											"\n -----------------------", methodSignature, argsInfo, data, expirationTime));
+						log(String.format(	"\n ************* CacheData *************" +
+											"\n ** -------- 设置缓存至Redis ------- **" +
+											"\n ** 方法签名：%s" +
+											"\n ** 方法入参：%s" +
+											"\n ** 缓存数据：%s" +
+											"\n ** 过期时间：%s" +
+											"\n *************************************",
+								methodSignature,
+								argsInfo,
+								data,
+								formatDate(expirationTime)));
 
 						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 					}
@@ -96,9 +117,10 @@ public class RedisDataHelper implements DataHelper {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
-				logger.info("\n >>>> 获取数据发生异常 <<<<" +
-							"\n 异常信息：" + e.getMessage() +
-							"\n ---------------------------");
+				logger.info("\n ************* CacheData *************" +
+							"\n ** ------- 获取数据发生异常 -------- **" +
+							"\n ** 异常信息：" + e.getMessage() +
+							"\n *************************************");
 				return null;
 
 			} finally {
@@ -114,19 +136,25 @@ public class RedisDataHelper implements DataHelper {
 						Object data = actualDataFunctional.getActualData();
 						if (data != null) {
 							long expirationTime = actualDataFunctional.getExpirationTime();
-							log(String.format(  "\n >>>> 刷新缓存至Redis <<<<" +
-												"\n method：%s" +
-												"\n args：%s" +
-												"\n 数据：%s" +
+							log(String.format(  "\n ************* CacheData *************" +
+												"\n ** -------- 刷新缓存至Redis ------- **" +
+												"\n 方法签名：%s" +
+												"\n 方法入参：%s" +
+												"\n 缓存数据：%s" +
 												"\n 过期时间：%s" +
-												"\n -----------------------",method,Arrays.toString(args),data,expirationTime));
+												"\n *************************************",
+									method,
+									Arrays.toString(args),
+									data,
+									formatDate(expirationTime)));
 							setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
-						logger.info("\n >>>> 异步更新数据至Redis发生异常 <<<<" +
-									"\n 异常信息：" + throwable.getMessage() +
-									"\n ---------------------------");
+						logger.info("\n ************* CacheData *************" +
+									"\n ** -- 异步更新数据至Redis发生异常 --- **" +
+									"\n ** 异常信息：" + throwable.getMessage() +
+									"\n *************************************");
 					} finally {
 						redisUtil.unlock(redisLockKey);
 					}
