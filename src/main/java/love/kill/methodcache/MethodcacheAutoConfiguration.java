@@ -3,8 +3,8 @@ package love.kill.methodcache;
 import love.kill.methodcache.advisor.CacheDataInterceptor;
 import love.kill.methodcache.advisor.CacheDataPointcutAdvisor;
 import love.kill.methodcache.datahelper.DataHelper;
-import love.kill.methodcache.datahelper.MemoryDataHelper;
-import love.kill.methodcache.datahelper.RedisDataHelper;
+import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
+import love.kill.methodcache.datahelper.impl.RedisDataHelper;
 import love.kill.methodcache.util.RedisUtil;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +30,7 @@ public class MethodcacheAutoConfiguration {
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
 	DataHelper redisDataHelper(RedisTemplate redisTemplate,MethodcacheProperties methodcacheProperties){
-		RedisDataHelper redisDataHelper = new RedisDataHelper(methodcacheProperties);
-		redisDataHelper.setRedisUtil(new RedisUtil(redisTemplate));
-		return redisDataHelper;
+		return new RedisDataHelper(methodcacheProperties, new RedisUtil(redisTemplate));
 	}
 
 	@Bean

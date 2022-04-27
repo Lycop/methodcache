@@ -1,7 +1,6 @@
 package love.kill.methodcache.controller;
 
-import love.kill.methodcache.util.CacheDataModel;
-import love.kill.methodcache.util.DataHelper;
+import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

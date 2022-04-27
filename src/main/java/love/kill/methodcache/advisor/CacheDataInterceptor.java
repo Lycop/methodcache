@@ -40,8 +40,8 @@ public class CacheDataInterceptor implements MethodInterceptor {
 			return methodInvocation.proceed();
 		}
 
-		Object[] args = methodInvocation.getArguments(); //方法入参实体
 		Method method = methodInvocation.getMethod();
+		Object[] args = methodInvocation.getArguments(); //方法入参实体
 		CacheData cacheData = method.getAnnotation(CacheData.class);
 
 		try {
@@ -89,7 +89,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		Calendar calendar = Calendar.getInstance();
 		switch (capitalExpiration){
 			case YEAR:
-				calendar.set(Calendar.MONTH, 0);;
+				calendar.set(Calendar.MONTH, 0);
 			case MONTH:
 				calendar.set(Calendar.DATE,0);
 			case DAY:

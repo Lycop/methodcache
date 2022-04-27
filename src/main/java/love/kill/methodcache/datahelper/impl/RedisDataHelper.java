@@ -1,11 +1,14 @@
-package love.kill.methodcache.datahelper;
+package love.kill.methodcache.datahelper.impl;
 
 import love.kill.methodcache.MethodcacheProperties;
+import love.kill.methodcache.datahelper.CacheDataModel;
+import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.util.RedisUtil;
 import love.kill.methodcache.util.SerializeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
@@ -27,18 +30,27 @@ public class RedisDataHelper implements DataHelper {
 
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
-	private RedisUtil redisUtil;
+	/**
+	 * 配置属性
+	 * */
 	private MethodcacheProperties methodcacheProperties;
 
-	private static boolean enableLog = false;
+	/**
+	 * redis工具类
+	 * */
+	private RedisUtil redisUtil;
 
-	public void setRedisUtil(RedisUtil redisUtil) {
-		this.redisUtil = redisUtil;
-	}
+	/**
+	 * 输出缓存日志
+	 * */
+	private boolean enableLog;
 
-	public RedisDataHelper(MethodcacheProperties methodcacheProperties) {
+
+	public RedisDataHelper(MethodcacheProperties methodcacheProperties, RedisUtil redisUtil) {
 		this.methodcacheProperties = methodcacheProperties;
-		enableLog = methodcacheProperties.isEnableLog();
+		this.redisUtil = redisUtil;
+
+		this.enableLog = methodcacheProperties.isEnableLog();
 	}
 
 	@Override
@@ -115,14 +127,13 @@ public class RedisDataHelper implements DataHelper {
 
 					return data;
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (Throwable throwable) {
+				throwable.printStackTrace();
 				logger.info("\n ************* CacheData *************" +
 							"\n ** ------- 获取数据发生异常 -------- **" +
-							"\n ** 异常信息：" + e.getMessage() +
+							"\n ** 异常信息：" + throwable.getMessage() +
 							"\n *************************************");
 				return null;
-
 			} finally {
 				redisUtil.unlock(redisLockKey);
 			}
@@ -242,9 +253,9 @@ public class RedisDataHelper implements DataHelper {
 	 *
 	 * 这里会对返回值进行反序列化
 	 * */
-	private boolean setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
+	private void setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
 		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, (long) methodSignature.hashCode(), args, argsHashCode, data, expireTimeStamp);
-		return redisUtil.hset(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
+		redisUtil.hset(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
 	}
 
 

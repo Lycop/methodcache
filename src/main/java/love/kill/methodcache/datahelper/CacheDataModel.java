@@ -53,7 +53,7 @@ public class CacheDataModel implements Serializable {
 	 * 过期时间（时间戳）
 	 * -1 代表永久有效
 	 * */
-	private long expireTimeStamp = -1L;
+	private long expireTimeStamp;
 
 	public CacheDataModel(String methodSignature, long methodSignatureHashCode, String args, long argsHashCode, Object data, long expireTimeStamp) {
 		this.methodSignature = methodSignature;
