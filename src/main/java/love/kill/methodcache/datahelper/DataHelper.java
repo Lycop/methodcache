@@ -38,7 +38,7 @@ public interface DataHelper {
 		/**
 		 * 发起一次真实请求，缓存并返回该数据
 		 * */
-		Object getActualData();
+		Object getActualData() throws Throwable;
 
 		/**
 		 * 数据过期时间，时间戳

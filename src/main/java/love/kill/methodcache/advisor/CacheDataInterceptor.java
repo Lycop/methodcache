@@ -1,4 +1,4 @@
-package love.kill.methodcache.aspect;
+package love.kill.methodcache.advisor;
 
 import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.annotation.CacheData;
@@ -24,26 +24,12 @@ public class CacheDataInterceptor implements MethodInterceptor {
 
 	private static Logger logger = LoggerFactory.getLogger(CacheDataInterceptor.class);
 
-	MethodcacheProperties methodcacheProperties;
-
-	DataHelper dataHelper;
-
-	public CacheDataInterceptor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
-	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
-
 	private MethodcacheProperties methodcacheProperties;
 
 	private DataHelper dataHelper;
 
-	public CacheMethodAspect(MethodcacheProperties methodcacheProperties) {
+	public CacheDataInterceptor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 		this.methodcacheProperties = methodcacheProperties;
-	}
-
-	public DataHelper getDataHelper() {
-		return dataHelper;
-	}
-
-	public void setDataHelper(DataHelper dataHelper) {
 		this.dataHelper = dataHelper;
 	}
 
@@ -64,16 +50,15 @@ public class CacheDataInterceptor implements MethodInterceptor {
 			long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
 			CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
 
-			return dataHelper.getData(method,args,refresh,new DataHelper.ActualDataFunctional(){
+			return dataHelper.getData(method, args, refresh, new DataHelper.ActualDataFunctional() {
 				@Autowired
-				public Object getActualData() {
+				public Object getActualData() throws Throwable {
 					try {
 						return methodInvocation.proceed();
 					} catch (Throwable throwable) {
-						// TODO: 2022/3/23
 						throwable.printStackTrace();
+						throw throwable;
 					}
-					return null;
 				}
 
 				@Override
@@ -93,7 +78,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 
 
 	/**
-	 *
+	 * 计算数据过期时间
 	 * */
 	private static long expirationTime(long expiration, long behindExpiration, CapitalExpiration capitalExpiration) {
 

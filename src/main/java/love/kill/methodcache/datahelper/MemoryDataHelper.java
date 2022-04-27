@@ -1,7 +1,6 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache.datahelper;
 
 import love.kill.methodcache.MethodcacheProperties;
-import love.kill.methodcache.aspect.CacheMethodAspect;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,8 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class MemoryDataHelper implements DataHelper {
 
-	private static Logger logger = LoggerFactory.getLogger(CacheMethodAspect.class);
-
+	private static Logger logger = LoggerFactory.getLogger(MemoryDataHelper.class);
 
 	/**
 	 * 属性配置
