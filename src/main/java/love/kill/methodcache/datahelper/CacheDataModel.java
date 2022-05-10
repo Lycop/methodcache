@@ -127,9 +127,7 @@ public class CacheDataModel implements Serializable {
 	}
 
 	public synchronized void expired(){
-		System.out.println("1 expireTime >>> " + formatDate(expireTime));
 		expireTime  = new Date().getTime();
-		System.out.println("2 expireTime >>> " + formatDate(expireTime));
 	}
 
 	public String getId() {

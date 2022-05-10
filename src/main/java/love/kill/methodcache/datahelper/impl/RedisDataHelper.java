@@ -315,8 +315,6 @@ public class RedisDataHelper implements DataHelper {
 	 * @param args 入参信息
 	 * @param data 数据
 	 * @param expireTimeStamp 过期时间
-	 *
-	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToRedis(String methodSignature,int argsHashCode, String args, Object data, long expireTimeStamp, String id, String remark) {
 		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, args, argsHashCode, data, expireTimeStamp);
@@ -335,6 +333,7 @@ public class RedisDataHelper implements DataHelper {
 
 	/**
 	 * 缓存数据至Redis
+	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToRedis(CacheDataModel cacheDataModel) {
 		redisUtil.hset(METHOD_CACHE_DATA, cacheDataModel.getMethodSignature() + CACHE_KEY_SEPARATION_CHARACTER + String.valueOf(cacheDataModel.getArgsHashCode()), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
