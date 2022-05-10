@@ -20,20 +20,21 @@ public class Cache {
 	private DataHelper dataHelper;
 
 	/**
-	 * 查询缓存中所有key
+	 * 查询所有缓存
 	 *
-	 * @param key 筛选
+	 * @param key 支持 id、备注、签名模糊查询
 	 * */
-	@GetMapping("/keys")
-	public List<Map<String,String>> keys(@RequestParam(value = "key", required = false) String key) {
-		return dataHelper.getKeys(key);
+	@GetMapping("/get")
+	public Map<String, Map<String,Object>> cache(@RequestParam(value = "key", required = false) String key) {
+		return dataHelper.getCaches(key);
 	}
 
 	/**
-	 * 查询缓存中所有key
+	 * 获取数据
 	 * */
-	@GetMapping("/value")
-	public String value(@RequestParam("key") String key){
-		return dataHelper.getData(key).toJSONString();
+	@GetMapping("/wipe")
+	public Map<String, Map<String,Object>> value(@RequestParam("hashCode") int hashCode){
+		dataHelper.wipeCache(hashCode);
+		return dataHelper.getCaches(null);
 	}
 }

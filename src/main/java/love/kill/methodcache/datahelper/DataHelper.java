@@ -26,7 +26,8 @@ public interface DataHelper {
 	 * @param actualDataFunctional 请求模型
 	 * @return 数据
 	 * */
-	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional) throws Exception;
+	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark) throws Exception;
+
 
 	/**
 	 * 请求模型
@@ -44,20 +45,8 @@ public interface DataHelper {
 	}
 
 	/**
-	 * 获取所有缓存key
-	 *
-	 * @return key
+	 * 格式化时间
 	 * */
-	List<Map<String,String>> getKeys(String key);
-
-	/**
-	 * 获取数据
-	 *
-	 * @param key 参数
-	 * @return 数据
-	 * */
-	CacheDataModel getData(String key);
-
 	default String formatDate(long timeStamp){
 		try {
 			return formatDate.format(new Date(timeStamp));
@@ -66,4 +55,20 @@ public interface DataHelper {
 			return String.valueOf(timeStamp);
 		}
 	}
+
+	/**
+	 * 获取缓存
+	 *
+	 * @return key
+	 * */
+	Map<String, Map<String,Object>> getCaches(String key);
+
+
+	/**
+	 * 清空数据
+	 *
+	 * @param cacheHashCode 缓存哈希值
+	 * @return 数据
+	 * */
+	boolean wipeCache(int cacheHashCode);
 }

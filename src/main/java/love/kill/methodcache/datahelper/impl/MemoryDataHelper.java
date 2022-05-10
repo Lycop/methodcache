@@ -111,7 +111,7 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional) {
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark) {
 
 		String methodSignature = method.toGenericString(); // 方法签名
 		Integer argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
@@ -130,7 +130,7 @@ public class MemoryDataHelper implements DataHelper {
 					methodSignature,
 					argsInfo,
 					cacheDataModel != null ? "是":"否",
-					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
+					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTime()))));
 
 
 		if (cacheDataModel == null || cacheDataModel.isExpired()) {
@@ -148,7 +148,7 @@ public class MemoryDataHelper implements DataHelper {
 						methodSignature,
 						argsInfo,
 						cacheDataModel != null ? "是":"否",
-						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
+						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTime()))));
 
 
 				if (cacheDataModel == null || cacheDataModel.isExpired()) {
@@ -179,7 +179,7 @@ public class MemoryDataHelper implements DataHelper {
 								data,
 								formatDate(expirationTime)));
 
-						setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
+						setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime,remark);
 
 					}
 
@@ -218,7 +218,7 @@ public class MemoryDataHelper implements DataHelper {
 									data,
 									formatDate(expirationTime)));
 
-							setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime);
+							setDataToMemory(methodSignature, argsHashCode, argsInfo, data, expirationTime, remark);
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
@@ -237,40 +237,43 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public List<Map<String, String>> getKeys(String key) {
-		List<Map<String,String>> keyList = new ArrayList<>();
-		Set<String> hkeys = cacheData.keySet();
-		for(String item : hkeys){
-			Map<Integer, CacheDataModel> dataModelMap = cacheData.get(item); // <方法入参哈希值,数据>
-			Set<Integer> argsHashCodes = dataModelMap.keySet(); // 方法入参哈希值集合
-			for(long argsHashCode : argsHashCodes){
-				String itemKey = item + "_" + argsHashCode;
-				String itemHashCode = String.valueOf(itemKey.hashCode());
-				if(!StringUtils.isEmpty(key)){
-					if(itemKey.contains(key) || itemHashCode.contains(key)){
-						Map<String, String> keyMap = new HashMap<>();
-						keyMap.put("key",itemKey);
-						keyMap.put("hash",itemHashCode);
-						keyList.add(keyMap);
-
-					}
-				}else {
-					Map<String, String> keyMap = new HashMap<>();
-					keyMap.put("key",itemKey);
-					keyMap.put("hash",itemHashCode);
-					keyList.add(keyMap);
-				}
-			}
-
-		}
-		return keyList;
+	public Map<String, Map<String,Object>> getCaches(String key) {
+		return null;
+//		Map<String,Map<String, String>> keyMap = new HashMap<>();
+//		Set<String> hkeys = cacheData.keySet();
+//		for(String methodSignature : hkeys){
+//			if(StringUtils.isEmpty(key)){
+//				if(!keyMap.containsKey(methodSignature)){
+//					keyMap.put(methodSignature, String.valueOf(Objects.hash(methodSignature)));
+//					setCacheKeyInfo(keyMap, )
+//				}
+//			}else {
+//				String HashCode = String.valueOf(Objects.hash(methodSignature));
+//				if(methodSignature.contains(key) || HashCode.contains(key)){
+//					keyMap.put(methodSignature, String.valueOf(Objects.hash(methodSignature)));
+//				}
+//			}
+//		}
+//		return keyMap;
 	}
 
+//	private void setCacheKeyInfo(Map<String, Map<String, String>> keyMap, String eachKey, String methodSignature) {
+//		if(!keyMap.containsKey(methodSignature)){
+//			if(!keyMap.containsKey(methodSignature)){
+//				CacheDataModel cacheDataModel = getData(eachKey);
+//				String remark = cacheDataModel.getRemark();
+//				Map<String,String> cacheKeyInfo = new HashMap<>();
+//				cacheKeyInfo.put("hashcode",String.valueOf(Objects.hash(methodSignature)));
+//				cacheKeyInfo.put("remark",remark);
+//				keyMap.put(methodSignature, cacheKeyInfo);
+//			}
+//		}
+//	}
+
 	@Override
-	public CacheDataModel getData(String key) {
-		// TODO: 2022/4/15
-//		return new CacheDataModel("",0,"");
-		return null;
+	public boolean wipeCache(int cacheHashCode) {
+		// todo
+		return false;
 	}
 
 	/**
@@ -301,8 +304,12 @@ public class MemoryDataHelper implements DataHelper {
 	 *
 	 * 这里会对返回值进行反序列化
 	 * */
-	private void setDataToMemory(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
-		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, (long)methodSignature.hashCode(), args, argsHashCode, data, expireTimeStamp);
+	private void setDataToMemory(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp, String remark) {
+		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, args, argsHashCode, data, expireTimeStamp);
+
+		if(!StringUtils.isEmpty(remark)){
+			cacheDataModel.setRemark(remark);
+		}
 
 		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
 		cacheDataModelMap.put(argsHashCode,cacheDataModel);

@@ -26,7 +26,7 @@ public class CacheDataModel implements Serializable {
 	/**
 	 * 方法签名哈希值
 	 * */
-	private Long methodSignatureHashCode;
+	private int methodSignatureHashCode;
 
 	/**
 	 * 入参
@@ -36,8 +36,12 @@ public class CacheDataModel implements Serializable {
 	/**
 	 * 入参哈希值
 	 * */
-	private Long argsHashCode;
+	private int argsHashCode;
 
+	/**
+	 * 缓存哈希值
+	 * */
+	private int cacheHashCode;
 
 	/**
 	 * 数据
@@ -53,83 +57,95 @@ public class CacheDataModel implements Serializable {
 	 * 过期时间（时间戳）
 	 * -1 代表永久有效
 	 * */
-	private long expireTimeStamp;
+	private long expireTime;
 
-	public CacheDataModel(String methodSignature, long methodSignatureHashCode, String args, long argsHashCode, Object data, long expireTimeStamp) {
+	/**
+	 * id
+	 * */
+	private String id = "";
+
+	/**
+	 * 备注
+	 * */
+	private String remark;
+
+	public CacheDataModel(String methodSignature, String args, int argsHashCode, Object data, long expireTime) {
 		this.methodSignature = methodSignature;
-		this.methodSignatureHashCode = methodSignatureHashCode;
+		this.methodSignatureHashCode = hash(methodSignatureHashCode);
 		this.argsHashCode = argsHashCode;
 		this.args = args;
 		this.data = data;
-		this.expireTimeStamp = expireTimeStamp;
+		this.expireTime = expireTime;
+		this.cacheHashCode = hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode));
 	}
 
-	public static SimpleDateFormat getOutPrintSimpleDateFormat() {
-		return outPrintSimpleDateFormat;
-	}
-
-	public static void setOutPrintSimpleDateFormat(SimpleDateFormat outPrintSimpleDateFormat) {
-		CacheDataModel.outPrintSimpleDateFormat = outPrintSimpleDateFormat;
-	}
 
 	public String getMethodSignature() {
 		return methodSignature;
 	}
 
-	public void setMethodSignature(String methodSignature) {
-		this.methodSignature = methodSignature;
-	}
-
-	public Long getMethodSignatureHashCode() {
+	public int getMethodSignatureHashCode() {
 		return methodSignatureHashCode;
-	}
-
-	public void setMethodSignatureHashCode(Long methodSignatureHashCode) {
-		this.methodSignatureHashCode = methodSignatureHashCode;
 	}
 
 	public String getArgs() {
 		return args;
 	}
 
-	public void setArgs(String args) {
-		this.args = args;
-	}
-
-	public Long getArgsHashCode() {
+	public int getArgsHashCode() {
 		return argsHashCode;
 	}
 
-	public void setArgsHashCode(Long argsHashCode) {
+	public void setArgsHashCode(int argsHashCode) {
 		this.argsHashCode = argsHashCode;
+	}
+
+	public int getCacheHashCode() {
+		return cacheHashCode;
 	}
 
 	public Object getData() {
 		return data;
 	}
 
-	public void setData(Object data) {
-		this.data = data;
+
+	public String getFormatCacheTime() {
+		return formatDate(cacheTime);
 	}
 
-	public Long getCacheTime() {
-		return cacheTime;
+	public long getExpireTime() {
+		return expireTime;
 	}
 
-	public void setCacheTime(Long cacheTime) {
-		this.cacheTime = cacheTime;
+	public String getFormatExpireTime() {
+		return formatDate(expireTime);
 	}
 
-	public long getExpireTimeStamp() {
-		return expireTimeStamp;
+
+	public synchronized boolean isExpired(){
+		return expireTime >= 0L && new Date().getTime() > expireTime;
 	}
 
-	public void setExpireTimeStamp(long expireTimeStamp) {
-		this.expireTimeStamp = expireTimeStamp;
+	public synchronized void expired(){
+		System.out.println("1 expireTime >>> " + formatDate(expireTime));
+		expireTime  = new Date().getTime();
+		System.out.println("2 expireTime >>> " + formatDate(expireTime));
 	}
 
-	public boolean isExpired(){
-		return expireTimeStamp >= 0L && new Date().getTime() > expireTimeStamp;
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
 	}
 
 	@Override
@@ -140,8 +156,10 @@ public class CacheDataModel implements Serializable {
 				", args='" + args + '\'' +
 				", argsHashCode=" + argsHashCode +
 				", data=" + data +
-				", cacheTime=" + getFormatDate(cacheTime) +
-				", expireTime=" + getFormatDate(expireTimeStamp) +
+				", cacheTime=" + formatDate(cacheTime) +
+				", expireTime=" + formatDate(expireTime) +
+				", id=" + id +
+				", remark=" + remark +
 				'}';
 	}
 
@@ -153,16 +171,23 @@ public class CacheDataModel implements Serializable {
 		objectMap.put("args",args);
 		objectMap.put("argsHashCode",argsHashCode);
 		objectMap.put("data",data);
-		objectMap.put("cacheTime",getFormatDate(cacheTime));
-		objectMap.put("expireTime",getFormatDate(expireTimeStamp));
+		objectMap.put("cacheTime",formatDate(cacheTime));
+		objectMap.put("expireTime",formatDate(expireTime));
+		objectMap.put("id",id);
+		objectMap.put("remark",remark);
 		return JSONObject.toJSONString(objectMap);
 	}
 
-	private String getFormatDate(long timeStamp){
+	private String formatDate(long timeStamp){
 		try {
-			return outPrintSimpleDateFormat.format(new Date());
+			return outPrintSimpleDateFormat.format(new Date(timeStamp));
 		}catch (Exception e){
 			return String.valueOf(timeStamp);
 		}
+	}
+
+	private static int hash(Object key) {
+		int h;
+		return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
 	}
 }

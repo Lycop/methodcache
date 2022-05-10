@@ -8,7 +8,6 @@ import love.kill.methodcache.util.RedisUtil;
 import love.kill.methodcache.util.SerializeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
@@ -27,6 +26,7 @@ public class RedisDataHelper implements DataHelper {
 
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
 	private static final  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA"; // 缓存数据
+	private static final  String CACHE_KEY_SEPARATION_CHARACTER = "_"; // 缓存Key分隔符
 
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
@@ -46,6 +46,9 @@ public class RedisDataHelper implements DataHelper {
 	private boolean enableLog;
 
 
+	public RedisDataHelper() {
+	}
+
 	public RedisDataHelper(MethodcacheProperties methodcacheProperties, RedisUtil redisUtil) {
 		this.methodcacheProperties = methodcacheProperties;
 		this.redisUtil = redisUtil;
@@ -54,7 +57,7 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional){
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark){
 
 		String methodSignature = method.toGenericString(); // 方法签名
 		Integer argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
@@ -75,7 +78,7 @@ public class RedisDataHelper implements DataHelper {
 					methodSignature,
 					argsInfo,
 					cacheDataModel != null ? "是":"否",
-					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
+					(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTime()))));
 
 		if (cacheDataModel == null || cacheDataModel.isExpired()) {
 			try {
@@ -92,7 +95,7 @@ public class RedisDataHelper implements DataHelper {
 						methodSignature,
 						argsInfo,
 						cacheDataModel != null ? "是":"否",
-						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTimeStamp()))));
+						(cacheDataModel == null ? "无" : formatDate(cacheDataModel.getExpireTime()))));
 
 				if (cacheDataModel == null || cacheDataModel.isExpired()) {
 					// 没获取到数据或者数据已过期，发起实际请求
@@ -122,7 +125,7 @@ public class RedisDataHelper implements DataHelper {
 								data,
 								formatDate(expirationTime)));
 
-						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
+						setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime, id, remark);
 					}
 
 					return data;
@@ -154,11 +157,11 @@ public class RedisDataHelper implements DataHelper {
 												"\n 缓存数据：%s" +
 												"\n 过期时间：%s" +
 												"\n *************************************",
-									method,
+									methodSignature,
 									Arrays.toString(args),
 									data,
 									formatDate(expirationTime)));
-							setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime);
+							setDataToRedis(methodSignature, argsHashCode, argsInfo, data, expirationTime, id, remark);
 						}
 					} catch (Throwable throwable) {
 						throwable.printStackTrace();
@@ -178,37 +181,99 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public List<Map<String, String>> getKeys(String key){
-		List<Map<String,String>> keyList = new ArrayList<>();
+	public Map<String, Map<String,Object>> getCaches(String key){
+		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
 		if(hkeys != null){
-			for(Object item : hkeys){
-				if(item instanceof String){
-					String itemKey = (String) item;
-					String itemHashCode = String.valueOf(itemKey.hashCode());
-					if(!StringUtils.isEmpty(key)){
-						if(itemKey.contains(key) || itemHashCode.contains(key)){
-							Map<String, String> keyMap = new HashMap<>();
-							keyMap.put("key",itemKey);
-							keyMap.put("hash",itemHashCode);
-							keyList.add(keyMap);
-						}
+			for(Object eachKey : hkeys){
+				if(eachKey instanceof String){
+					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
+					if(cacheDataModel == null || cacheDataModel.isExpired()){
+						// 缓存不存在或已过期
+						continue;
+					}
+
+					String methodSignature = cacheDataModel.getMethodSignature();
+
+					if(StringUtils.isEmpty(key)){
+						putCacheInfo(cacheMap, methodSignature, cacheDataModel);
 					}else {
-						Map<String, String> keyMap = new HashMap<>();
-						keyMap.put("key",itemKey);
-						keyMap.put("hash",itemHashCode);
-						keyList.add(keyMap);
+						String id = cacheDataModel.getId();
+						String remark = cacheDataModel.getRemark();
+						if((!StringUtils.isEmpty(id) && id.contains(key)) || (!StringUtils.isEmpty(remark) && remark.contains(key)) || methodSignature.contains(key)){
+							putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+						}
 					}
 				}
 			}
 		}
 
-		return keyList;
+		return cacheMap;
+	}
+
+	@SuppressWarnings("unchecked")
+	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel){
+
+		Map<String,Object> keyMap = cacheMap.computeIfAbsent(methodSignature, k -> {
+			Map<String,Object> map = new HashMap<>();
+			map.put("id",cacheDataModel.getId());
+			map.put("remark",cacheDataModel.getRemark());
+			return map;
+		});
+
+		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
+
+		Map<String,Object> cacheInfo = new HashMap<>();
+		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
+		cacheInfo.put("args",cacheDataModel.getArgs());
+		cacheInfo.put("data",cacheDataModel.getData());
+		cacheInfo.put("cacheTime",cacheDataModel.getFormatCacheTime());
+		cacheInfo.put("expireTime",cacheDataModel.getFormatExpireTime());
+
+		cacheInfoList.add(cacheInfo);
 	}
 
 	@Override
-	public CacheDataModel getData(String key) {
-		return getDataFromRedis(key);
+	public boolean wipeCache(int cacheHashCode) {
+		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
+		if(hkeys != null){
+			for(Object eachKey : hkeys){
+				if(eachKey instanceof String){
+
+					// 没有获取到数据或者数据已过期，加锁再次尝试获取
+					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
+					if(cacheDataModel == null){
+						continue;
+					}
+
+					String methodSignature = cacheDataModel.getMethodSignature();
+					String redisLockKey = REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + methodSignature;
+					try {
+						while (!redisUtil.lock(redisLockKey)) {}
+						cacheDataModel = getDataFromRedis((String)eachKey);
+
+						if(cacheDataModel == null || cacheDataModel.isExpired()){
+							// 缓存不存在或已过期
+							continue;
+						}
+
+						if(cacheDataModel.getCacheHashCode() == cacheHashCode){
+							cacheDataModel.expired();
+							setDataToRedis(cacheDataModel);
+							break;
+						}
+
+
+					}catch (Throwable throwable) {
+						throwable.printStackTrace();
+					} finally {
+						redisUtil.unlock(redisLockKey);
+					}
+
+				}
+			}
+		}
+		return true;
 	}
 
 
@@ -219,7 +284,7 @@ public class RedisDataHelper implements DataHelper {
 	 * @param argsHashCode 入参哈希
 	 * */
 	private CacheDataModel getDataFromRedis(String methodSignature, Integer argsHashCode) {
-		return getDataFromRedis(methodSignature + "_" + Integer.toString(argsHashCode));
+		return getDataFromRedis(methodSignature + CACHE_KEY_SEPARATION_CHARACTER + String.valueOf(argsHashCode));
 	}
 
 
@@ -253,9 +318,26 @@ public class RedisDataHelper implements DataHelper {
 	 *
 	 * 这里会对返回值进行反序列化
 	 * */
-	private void setDataToRedis(String methodSignature,Integer argsHashCode, String args, Object data, long expireTimeStamp) {
-		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, (long) methodSignature.hashCode(), args, argsHashCode, data, expireTimeStamp);
-		redisUtil.hset(METHOD_CACHE_DATA, methodSignature + "_" + Integer.toString(argsHashCode), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
+	private void setDataToRedis(String methodSignature,int argsHashCode, String args, Object data, long expireTimeStamp, String id, String remark) {
+		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, args, argsHashCode, data, expireTimeStamp);
+		if(StringUtils.isEmpty(id)){
+			cacheDataModel.setId(String.valueOf(cacheDataModel.getMethodSignatureHashCode()));
+		}else {
+			cacheDataModel.setId(id);
+		}
+
+		if(!StringUtils.isEmpty(remark)){
+			cacheDataModel.setRemark(remark);
+		}
+
+		setDataToRedis(cacheDataModel);
+	}
+
+	/**
+	 * 缓存数据至Redis
+	 * */
+	private void setDataToRedis(CacheDataModel cacheDataModel) {
+		redisUtil.hset(METHOD_CACHE_DATA, cacheDataModel.getMethodSignature() + CACHE_KEY_SEPARATION_CHARACTER + String.valueOf(cacheDataModel.getArgsHashCode()), byteArray2String(SerializeUtil.serizlize(cacheDataModel)));
 	}
 
 
