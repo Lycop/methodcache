@@ -32,7 +32,7 @@ public class Cache {
 	 * 清除数据
 	 * */
 	@GetMapping("/wipe")
-	public Map<String, Map<String,Object>> value(@RequestParam("hashCode") int hashCode){
+	public Map<String, Map<String,Object>> value(@RequestParam("hashcode") int hashCode){
 		dataHelper.wipeCache(hashCode);
 		return dataHelper.getCaches(null);
 	}

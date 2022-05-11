@@ -12,8 +12,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 /**
  * @author likepan
@@ -24,11 +23,51 @@ public class RedisDataHelper implements DataHelper {
 
 	private static Logger logger = LoggerFactory.getLogger(RedisDataHelper.class);
 
+	/**
+	 * 锁前缀
+	 * */
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
-	private static final  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA"; // 缓存数据
+
+	/**
+	 * 缓存key
+	 * */
+	private static final  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA";
+
+	/**
+	 * 签名和入参的分隔符
+	 * */
 	private static final  String CACHE_KEY_SEPARATION_CHARACTER = "_"; // 缓存Key分隔符
 
-	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
+	/**
+	 * cpu个数
+	 */
+	private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+
+	/**
+	 * 核心线程数（CPU核心数 + 1）
+	 */
+	private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
+	/**
+	 * 线程池最大线程数（CPU核心数 * 2 + 1）
+	 */
+	private static final int MAXIMUM_POOL_SIZE = CPU_COUNT * 2 + 1;
+
+	/**
+	 * 任务队列
+	 */
+	private static final int MAXNUM_QUEUE_CAPACITY = 2000;
+	/**
+	 * 非核心线程闲置时超时1s
+	 */
+	private static final int KEEP_ALIVE = 1;
+
+	private static final ExecutorService executorService = new ThreadPoolExecutor(CORE_POOL_SIZE,
+			MAXIMUM_POOL_SIZE,
+			KEEP_ALIVE,
+			TimeUnit.SECONDS,
+			new ArrayBlockingQueue<>(MAXNUM_QUEUE_CAPACITY),
+			Executors.defaultThreadFactory(),
+			new ThreadPoolExecutor.AbortPolicy());
 
 	/**
 	 * 配置属性
@@ -185,26 +224,33 @@ public class RedisDataHelper implements DataHelper {
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
 		if(hkeys != null){
+			CountDownLatch cdl = new CountDownLatch(hkeys.size());
+			logger.info("共有" + hkeys + "个key");
 			for(Object eachKey : hkeys){
 				if(eachKey instanceof String){
-					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
-					if(cacheDataModel == null || cacheDataModel.isExpired()){
-						// 缓存不存在或已过期
-						continue;
-					}
-
-					String methodSignature = cacheDataModel.getMethodSignature();
-
-					if(StringUtils.isEmpty(key)){
-						putCacheInfo(cacheMap, methodSignature, cacheDataModel);
-					}else {
-						String id = cacheDataModel.getId();
-						String remark = cacheDataModel.getRemark();
-						if((!StringUtils.isEmpty(id) && id.contains(key)) || (!StringUtils.isEmpty(remark) && remark.contains(key)) || methodSignature.contains(key)){
-							putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+					executorService.execute(()->{
+						CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
+						if(cacheDataModel != null &&  !cacheDataModel.isExpired()){
+							String methodSignature = cacheDataModel.getMethodSignature();
+							if(StringUtils.isEmpty(key)){
+								putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+							}else {
+								String id = cacheDataModel.getId();
+								String remark = cacheDataModel.getRemark();
+								if((!StringUtils.isEmpty(id) && id.contains(key)) || (!StringUtils.isEmpty(remark) && remark.contains(key)) || methodSignature.contains(key)){
+									putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+								}
+							}
 						}
-					}
+						cdl.countDown();
+
+					});
 				}
+			}
+			try {
+				cdl.wait();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 
@@ -239,7 +285,7 @@ public class RedisDataHelper implements DataHelper {
 		if(hkeys != null){
 			for(Object eachKey : hkeys){
 				if(eachKey instanceof String){
-
+					// todo 多线程查找
 					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
 					if(cacheDataModel == null){
 						continue;
