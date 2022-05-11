@@ -4,7 +4,6 @@ import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +29,7 @@ public class Cache {
 	}
 
 	/**
-	 * 获取数据
+	 * 清除数据
 	 * */
 	@GetMapping("/wipe")
 	public Map<String, Map<String,Object>> value(@RequestParam("hashCode") int hashCode){

@@ -123,7 +123,7 @@ public class CacheDataModel implements Serializable {
 
 
 	public synchronized boolean isExpired(){
-		return expireTime >= 0L && new Date().getTime() > expireTime;
+		return expireTime >= 0L && new Date().getTime() >= expireTime;
 	}
 
 	public synchronized void expired(){

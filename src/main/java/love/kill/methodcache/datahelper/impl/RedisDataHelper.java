@@ -234,13 +234,12 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public boolean wipeCache(int cacheHashCode) {
+	public void wipeCache(int cacheHashCode) {
 		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
 		if(hkeys != null){
 			for(Object eachKey : hkeys){
 				if(eachKey instanceof String){
 
-					// 没有获取到数据或者数据已过期，加锁再次尝试获取
 					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
 					if(cacheDataModel == null){
 						continue;
@@ -273,7 +272,6 @@ public class RedisDataHelper implements DataHelper {
 				}
 			}
 		}
-		return true;
 	}
 
 

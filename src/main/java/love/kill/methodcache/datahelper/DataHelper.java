@@ -3,7 +3,6 @@ package love.kill.methodcache.datahelper;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -68,7 +67,6 @@ public interface DataHelper {
 	 * 清空数据
 	 *
 	 * @param cacheHashCode 缓存哈希值
-	 * @return 数据
 	 * */
-	boolean wipeCache(int cacheHashCode);
+	void wipeCache(int cacheHashCode);
 }
