@@ -21,11 +21,12 @@ public class Cache {
 	/**
 	 * 查询所有缓存
 	 *
-	 * @param key 支持 id、备注、签名模糊查询
+	 * @param match 模糊匹配，支持：(注解上的)id、(注解上的)备注、方法签名
+	 * @param select 筛选入参
 	 * */
 	@GetMapping("/get")
-	public Map<String, Map<String,Object>> cache(@RequestParam(value = "key", required = false) String key) {
-		return dataHelper.getCaches(key);
+	public Map<String, Map<String,Object>> cache(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "select", required = false) String select) {
+		return dataHelper.getCaches(match,select);
 	}
 
 	/**
@@ -34,6 +35,6 @@ public class Cache {
 	@GetMapping("/wipe")
 	public Map<String, Map<String,Object>> value(@RequestParam("hashcode") int hashCode){
 		dataHelper.wipeCache(hashCode);
-		return dataHelper.getCaches(null);
+		return dataHelper.getCaches(null,null);
 	}
 }

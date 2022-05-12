@@ -26,7 +26,7 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * 锁前缀
 	 * */
-	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
+	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_";
 
 	/**
 	 * 缓存key
@@ -36,36 +36,23 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * 签名和入参的分隔符
 	 * */
-	private static final  String CACHE_KEY_SEPARATION_CHARACTER = "_"; // 缓存Key分隔符
+	private static final  String CACHE_KEY_SEPARATION_CHARACTER = "_";
 
 	/**
 	 * cpu个数
 	 */
 	private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
 
-	/**
-	 * 核心线程数（CPU核心数 + 1）
-	 */
-	private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
-	/**
-	 * 线程池最大线程数（CPU核心数 * 2 + 1）
-	 */
-	private static final int MAXIMUM_POOL_SIZE = CPU_COUNT * 2 + 1;
 
 	/**
-	 * 任务队列
-	 */
-	private static final int MAXNUM_QUEUE_CAPACITY = 2000;
-	/**
-	 * 非核心线程闲置时超时1s
-	 */
-	private static final int KEEP_ALIVE = 1;
-
-	private static final ExecutorService executorService = new ThreadPoolExecutor(CORE_POOL_SIZE,
-			MAXIMUM_POOL_SIZE,
-			KEEP_ALIVE,
+	 * 执行线程
+	 * */
+	private static final ExecutorService executorService = new ThreadPoolExecutor(
+			CPU_COUNT + 1, // 核心线程数（CPU核心数 + 1）
+			CPU_COUNT * 2 + 1, // 线程池最大线程数（CPU核心数 * 2 + 1）
+			1,
 			TimeUnit.SECONDS,
-			new ArrayBlockingQueue<>(MAXNUM_QUEUE_CAPACITY),
+			new LinkedBlockingQueue<>(),
 			Executors.defaultThreadFactory(),
 			new ThreadPoolExecutor.AbortPolicy());
 
@@ -219,38 +206,41 @@ public class RedisDataHelper implements DataHelper {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public Map<String, Map<String,Object>> getCaches(String key){
-		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
-		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
-		if(hkeys != null){
-			CountDownLatch cdl = new CountDownLatch(hkeys.size());
-			logger.info("共有" + hkeys + "个key");
-			for(Object eachKey : hkeys){
-				if(eachKey instanceof String){
-					executorService.execute(()->{
-						CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
-						if(cacheDataModel != null &&  !cacheDataModel.isExpired()){
-							String methodSignature = cacheDataModel.getMethodSignature();
-							if(StringUtils.isEmpty(key)){
-								putCacheInfo(cacheMap, methodSignature, cacheDataModel);
-							}else {
-								String id = cacheDataModel.getId();
-								String remark = cacheDataModel.getRemark();
-								if((!StringUtils.isEmpty(id) && id.contains(key)) || (!StringUtils.isEmpty(remark) && remark.contains(key)) || methodSignature.contains(key)){
-									putCacheInfo(cacheMap, methodSignature, cacheDataModel);
-								}
-							}
-						}
-						cdl.countDown();
+	public Map<String, Map<String,Object>> getCaches(String match,String select){
 
-					});
-				}
+		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
+
+		Set fieldSet = redisUtil.hkeys(METHOD_CACHE_DATA);
+		List<String> fieldList = new ArrayList<>();
+		for (Object field : fieldSet) {
+			if (field instanceof String) {
+				fieldList.add((String) field);
 			}
-			try {
-				cdl.wait();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+		}
+		if (fieldList.size() <= 0) {
+			return cacheMap;
+		}
+
+		List<CacheDataModel> objects = getCacheDataModel(fieldList);
+
+		for (CacheDataModel cacheDataModel : objects) {
+
+			if(cacheDataModel.isExpired()){
+				// todo 从redis删除
+				continue;
+			}
+
+			String methodSignature = cacheDataModel.getMethodSignature();
+			if (StringUtils.isEmpty(match)) {
+				putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
+			} else {
+				String id = cacheDataModel.getId();
+				String remark = cacheDataModel.getRemark();
+				if ((!StringUtils.isEmpty(id) && id.contains(match)) || (!StringUtils.isEmpty(remark) && remark.contains(match)) || methodSignature.contains(match)) {
+					putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
+				}
 			}
 		}
 
@@ -258,7 +248,14 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel){
+	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel, String select){
+
+		if(!StringUtils.isEmpty(select)){
+			String args = cacheDataModel.getArgs();
+			if(!StringUtils.isEmpty(args) && !args.contains(select)){
+				return;
+			}
+		}
 
 		Map<String,Object> keyMap = cacheMap.computeIfAbsent(methodSignature, k -> {
 			Map<String,Object> map = new HashMap<>();
@@ -279,50 +276,103 @@ public class RedisDataHelper implements DataHelper {
 		cacheInfoList.add(cacheInfo);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void wipeCache(int cacheHashCode) {
-		Set hkeys = redisUtil.hkeys(METHOD_CACHE_DATA);
-		if(hkeys != null){
-			for(Object eachKey : hkeys){
-				if(eachKey instanceof String){
-					// todo 多线程查找
-					CacheDataModel cacheDataModel = getDataFromRedis((String)eachKey);
-					if(cacheDataModel == null){
-						continue;
-					}
-
-					String methodSignature = cacheDataModel.getMethodSignature();
-					String redisLockKey = REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + methodSignature;
-					try {
-						while (!redisUtil.lock(redisLockKey)) {}
-						cacheDataModel = getDataFromRedis((String)eachKey);
-
-						if(cacheDataModel == null || cacheDataModel.isExpired()){
-							// 缓存不存在或已过期
-							continue;
-						}
-
-						if(cacheDataModel.getCacheHashCode() == cacheHashCode){
-							cacheDataModel.expired();
-							setDataToRedis(cacheDataModel);
-							break;
-						}
 
 
-					}catch (Throwable throwable) {
-						throwable.printStackTrace();
-					} finally {
-						redisUtil.unlock(redisLockKey);
-					}
+		Set fieldSet = redisUtil.hkeys(METHOD_CACHE_DATA);
+		List<String> fieldList = new ArrayList<>();
+		for (Object field : fieldSet) {
+			if (field instanceof String) {
+				fieldList.add((String) field);
+			}
+		}
+		if (fieldList.size() <= 0) {
+			return;
+		}
 
+		List<CacheDataModel> objects = getCacheDataModel(fieldList);
+
+		for (CacheDataModel cacheDataModel : objects) {
+			if (cacheDataModel == null || cacheDataModel.getCacheHashCode() != cacheHashCode) {
+				continue;
+			}
+
+			String methodSignature = cacheDataModel.getMethodSignature();
+			String redisLockKey = REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + methodSignature;
+			try {
+				while (!redisUtil.lock(redisLockKey)) {}
+
+				if (cacheDataModel.isExpired()) {
+					// 缓存不存在或已过期
+					continue;
 				}
+
+				if (cacheDataModel.getCacheHashCode() == cacheHashCode) {
+					cacheDataModel.expired();
+					setDataToRedis(cacheDataModel);
+					break;
+				}
+
+			} catch (Throwable throwable) {
+				throwable.printStackTrace();
+			} finally {
+				redisUtil.unlock(redisLockKey);
 			}
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	private List<CacheDataModel> getCacheDataModel(List<String> fieldList){
+
+		int batchSize = 500; // 每批大小
+		int batchCount = (fieldList.size() / batchSize) + 1; // 总批次数
+
+		CountDownLatch countDownLatch = new CountDownLatch(batchCount);
+
+		List<String>[] batchFieldListArray = new List[batchCount];
+		int i = 0;
+		for (String field : fieldList) {
+			if (batchFieldListArray[i] == null) {
+				batchFieldListArray[i] = new ArrayList<>();
+			}
+			batchFieldListArray[i].add(field);
+			if (batchFieldListArray[i].size() > batchSize) {
+				if (++i >= batchCount) {
+					break;
+				}
+			}
+		}
+
+		List<CacheDataModel> cacheDataModels = new ArrayList<>();
+
+		for (List<String> batchFieldList : batchFieldListArray) {
+			executorService.execute(() -> {
+				try {
+					cacheDataModels.addAll(getDataFromRedis(batchFieldList));
+				} catch (Exception e) {
+					logger.error("从Redis批量查询缓存出现异常：" + e.getMessage());
+				} finally {
+					countDownLatch.countDown();
+				}
+
+			});
+		}
+
+		try {
+			countDownLatch.await();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			logger.error("查询缓存被中断：" + e.getMessage());
+		}
+
+		return cacheDataModels;
+	}
+
 
 	/**
-	 * 从Redis获取数据
+	 * 从 Redis 获取数据
 	 *
 	 * @param methodSignature 方法签名
 	 * @param argsHashCode 入参哈希
@@ -333,7 +383,7 @@ public class RedisDataHelper implements DataHelper {
 
 
 	/**
-	 * 从Redis获取数据
+	 * 从 Redis 获取数据
 	 *
 	 * @param key 缓存key
 	 * @result key对应的数据
@@ -348,6 +398,26 @@ public class RedisDataHelper implements DataHelper {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * 从 Redis 批量获取数据
+	 *
+	 * @param keys 缓存key
+	 * @result key对应的数据
+	 * */
+	private List<CacheDataModel> getDataFromRedis(List<String> keys) {
+		List<Object> objectByteStringList = redisUtil.hMultiget(METHOD_CACHE_DATA, keys);
+		List<CacheDataModel> cacheDataModels = new ArrayList<>();
+		for(Object objectByteString : objectByteStringList){
+			if(objectByteString instanceof String){
+				Object dataModel = SerializeUtil.deserialize(string2byteArray((String) objectByteString));
+				if(dataModel instanceof CacheDataModel){
+					cacheDataModels.add((CacheDataModel)dataModel);
+				}
+			}
+		}
+		return cacheDataModels;
 	}
 
 
@@ -376,7 +446,7 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 缓存数据至Redis
+	 * 缓存数据至 Redis
 	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToRedis(CacheDataModel cacheDataModel) {

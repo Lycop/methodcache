@@ -3,6 +3,8 @@ package love.kill.methodcache.util;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,10 +25,8 @@ public class RedisUtil {
 		this.redisTemplate = redisTemplate;
 	}
 
-
-
 	/**
-	 * 设置数据
+	 * 插入数据
 	 *
 	 * @param key   键
 	 * @param value 值
@@ -43,7 +43,7 @@ public class RedisUtil {
 	}
 
 	/**
-	 * 添加缓存并设置过期时间
+	 * 插入数据并设置过期时间
 	 *
 	 * @param key   键
 	 * @param value 值
@@ -66,7 +66,7 @@ public class RedisUtil {
 	}
 
 	/**
-	 * 获取数据
+	 * 查询数据
 	 *
 	 * @param key 键
 	 * @return 值
@@ -76,7 +76,7 @@ public class RedisUtil {
 	}
 
 	/**
-	 * 设置哈希值
+	 * 插入哈希数据
 	 *
 	 * @param key 哈希键
 	 * @param field 字段
@@ -94,7 +94,17 @@ public class RedisUtil {
 	}
 
 	/**
-	 * 获取哈希值
+	 * 获取哈希key
+	 *
+	 * @param key 哈希键
+	 * @return 所有field
+	 */
+	public Set hkeys(String key) {
+		return (key == null) ? null : redisTemplate.opsForHash().keys(key);
+	}
+
+	/**
+	 * 获取哈希数据
 	 *
 	 * @param key 哈希键
 	 * @param field 字段
@@ -104,14 +114,16 @@ public class RedisUtil {
 		return (key == null || field == null) ? null : redisTemplate.opsForHash().get(key,field);
 	}
 
+
 	/**
-	 * 获取哈希值
+	 * 批量获取哈希值
 	 *
 	 * @param key 哈希键
-	 * @return 所有field
+	 * @param fields 字段
+	 * @return 值
 	 */
-	public Set hkeys(String key) {
-		return (key == null) ? null : redisTemplate.opsForHash().keys(key);
+	public List<Object> hMultiget(String key, List<String> fields) {
+		return (key == null || fields == null) ? new ArrayList<>() : redisTemplate.opsForHash().multiGet(key,fields);
 	}
 
 

@@ -237,7 +237,7 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Map<String, Map<String,Object>> getCaches(String key) {
+	public Map<String, Map<String,Object>> getCaches(String match, String select) {
 
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 
@@ -255,13 +255,13 @@ public class MemoryDataHelper implements DataHelper {
 
 				String methodSignature = cacheDataModel.getMethodSignature();
 
-				if(StringUtils.isEmpty(key)){
-					putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+				if(StringUtils.isEmpty(match)){
+					putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
 				}else {
 					String id = cacheDataModel.getId();
 					String remark = cacheDataModel.getRemark();
-					if((!StringUtils.isEmpty(id) && id.contains(key)) || (!StringUtils.isEmpty(remark) && remark.contains(key)) || methodSignature.contains(key)){
-						putCacheInfo(cacheMap, methodSignature, cacheDataModel);
+					if((!StringUtils.isEmpty(id) && id.contains(match)) || (!StringUtils.isEmpty(remark) && remark.contains(match)) || methodSignature.contains(match)){
+						putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
 					}
 				}
 			}
@@ -271,7 +271,14 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel){
+	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel, String select){
+
+		if(!StringUtils.isEmpty(select)){
+			String args = cacheDataModel.getArgs();
+			if(!StringUtils.isEmpty(args) && !args.contains(select)){
+				return;
+			}
+		}
 
 		Map<String,Object> keyMap = cacheMap.computeIfAbsent(methodSignature, k -> {
 			Map<String,Object> map = new HashMap<>();

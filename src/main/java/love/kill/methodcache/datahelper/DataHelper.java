@@ -60,7 +60,7 @@ public interface DataHelper {
 	 *
 	 * @return key
 	 * */
-	Map<String, Map<String,Object>> getCaches(String key);
+	Map<String, Map<String,Object>> getCaches(String match,String select);
 
 
 	/**
