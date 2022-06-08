@@ -10,7 +10,7 @@ import java.util.*;
  */
 public class DataUtil {
 
-	public static Integer getArgsHashCode(Object[] args) {
+	public static int getArgsHashCode(Object[] args) {
 
 		Map<String, Integer> fieldHash = new LinkedHashMap<>();
 		try {
@@ -21,7 +21,8 @@ public class DataUtil {
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}
-		return Objects.hash(fieldHash);
+
+		return fieldHash.hashCode();
 	}
 
 	private static int doGetHash(Object arg) throws IllegalAccessException {
@@ -107,6 +108,11 @@ public class DataUtil {
 				(Double.class == clazz) ||
 				(Character.class == clazz) ||
 				(Boolean.class == clazz);
+	}
+
+	public static int hash(Object key) {
+		int h;
+		return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
 	}
 
 }

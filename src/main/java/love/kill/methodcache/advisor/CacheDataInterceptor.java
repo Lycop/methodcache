@@ -91,7 +91,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 			case YEAR:
 				calendar.set(Calendar.MONTH, 0);
 			case MONTH:
-				calendar.set(Calendar.DATE,0);
+				calendar.set(Calendar.DATE,1);
 			case DAY:
 				calendar.set(Calendar.HOUR_OF_DAY,0);
 			case HOUR:

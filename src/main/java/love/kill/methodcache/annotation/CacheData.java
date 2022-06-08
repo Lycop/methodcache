@@ -19,7 +19,7 @@ public @interface CacheData {
 
 	/**
 	 * id
-	 * 用于标识一个缓存，可以用来清除缓存
+	 * 标识一批缓存，可以用来清除缓存
 	 * */
 	String id() default "";
 

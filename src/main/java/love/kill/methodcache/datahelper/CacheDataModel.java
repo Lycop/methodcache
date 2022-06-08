@@ -60,23 +60,24 @@ public class CacheDataModel implements Serializable {
 	private long expireTime;
 
 	/**
-	 * id
-	 * */
-	private String id = "";
-
-	/**
 	 * 备注
 	 * */
 	private String remark;
 
-	public CacheDataModel(String methodSignature, String args, int argsHashCode, Object data, long expireTime) {
+	/**
+	 * id
+	 * */
+	private String id;
+
+
+	public CacheDataModel(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, Object data, long expireTime) {
 		this.methodSignature = methodSignature;
-		this.methodSignatureHashCode = hash(methodSignatureHashCode);
+		this.methodSignatureHashCode = methodSignatureHashCode;
 		this.argsHashCode = argsHashCode;
 		this.args = args;
 		this.data = data;
 		this.expireTime = expireTime;
-		this.cacheHashCode = hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode));
+		this.cacheHashCode = cacheHashCode;
 	}
 
 
@@ -130,6 +131,7 @@ public class CacheDataModel implements Serializable {
 		expireTime  = new Date().getTime();
 	}
 
+
 	public String getId() {
 		return id;
 	}
@@ -146,6 +148,7 @@ public class CacheDataModel implements Serializable {
 		this.remark = remark;
 	}
 
+
 	@Override
 	public String toString() {
 		return "CacheDataModel{" +
@@ -156,8 +159,8 @@ public class CacheDataModel implements Serializable {
 				", data=" + data +
 				", cacheTime=" + formatDate(cacheTime) +
 				", expireTime=" + formatDate(expireTime) +
-				", id=" + id +
 				", remark=" + remark +
+				", id=" + id +
 				'}';
 	}
 
@@ -171,8 +174,8 @@ public class CacheDataModel implements Serializable {
 		objectMap.put("data",data);
 		objectMap.put("cacheTime",formatDate(cacheTime));
 		objectMap.put("expireTime",formatDate(expireTime));
-		objectMap.put("id",id);
 		objectMap.put("remark",remark);
+		objectMap.put("id",id);
 		return JSONObject.toJSONString(objectMap);
 	}
 
@@ -182,10 +185,5 @@ public class CacheDataModel implements Serializable {
 		}catch (Exception e){
 			return String.valueOf(timeStamp);
 		}
-	}
-
-	private static int hash(Object key) {
-		int h;
-		return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
 	}
 }

@@ -18,6 +18,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 @EnableConfigurationProperties(MethodcacheProperties.class)
@@ -29,8 +30,19 @@ public class MethodcacheAutoConfiguration {
 	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
-	DataHelper redisDataHelper(RedisTemplate redisTemplate,MethodcacheProperties methodcacheProperties){
-		return new RedisDataHelper(methodcacheProperties, new RedisUtil(redisTemplate));
+	DataHelper redisDataHelper(RedisTemplate redisTemplate, MethodcacheProperties methodcacheProperties){
+
+		RedisTemplate<Object, Object> cacheRedisTemplate = new RedisTemplate<>();
+		cacheRedisTemplate.setConnectionFactory(redisTemplate.getConnectionFactory());
+
+		StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+		cacheRedisTemplate.setKeySerializer(stringRedisSerializer);
+		cacheRedisTemplate.setValueSerializer(stringRedisSerializer);
+		cacheRedisTemplate.setHashKeySerializer(stringRedisSerializer);
+		cacheRedisTemplate.setHashValueSerializer(stringRedisSerializer);
+		cacheRedisTemplate.afterPropertiesSet();
+
+		return new RedisDataHelper(methodcacheProperties, new RedisUtil(cacheRedisTemplate));
 	}
 
 	@Bean

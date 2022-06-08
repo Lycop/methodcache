@@ -66,7 +66,8 @@ public interface DataHelper {
 	/**
 	 * 清空数据
 	 *
-	 * @param cacheHashCode 缓存哈希值
+	 * @param id 缓存ID
+	 * @param hashCode 缓存哈希值
 	 * */
-	void wipeCache(int cacheHashCode);
+	Map<String, Map<String,Object>> wipeCache(String id, String hashCode);
 }
