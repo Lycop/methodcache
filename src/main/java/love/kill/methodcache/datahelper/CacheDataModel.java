@@ -85,20 +85,12 @@ public class CacheDataModel implements Serializable {
 		return methodSignature;
 	}
 
-	public int getMethodSignatureHashCode() {
-		return methodSignatureHashCode;
-	}
-
 	public String getArgs() {
 		return args;
 	}
 
 	public int getArgsHashCode() {
 		return argsHashCode;
-	}
-
-	public void setArgsHashCode(int argsHashCode) {
-		this.argsHashCode = argsHashCode;
 	}
 
 	public int getCacheHashCode() {

@@ -23,11 +23,11 @@ public class Cache {
 	/**
 	 * 查询所有缓存
 	 *
-	 * @param match  模糊匹配，支持：(注解上的)id、(注解上的)备注、方法签名
+	 * @param match  模糊匹配，支持：方法签名、缓存哈希值、缓存ID
 	 * @param select 筛选入参
 	 */
-	@GetMapping("/get")
-	public Map<String, Map<String, Object>> cache(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "select", required = false) String select) {
+	@GetMapping
+	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "select", required = false) String select) {
 		return dataHelper.getCaches(match, select);
 	}
 
@@ -35,25 +35,21 @@ public class Cache {
 	 * 清除数据
 	 *
 	 * @param id 缓存ID
-	 * @param hashCode  哈希值，支持：方法签名哈希值、缓存哈希值
+	 * @param hashCode 缓存哈希值
 	 */
-	@GetMapping("/wipe")
-	public Map<String, Map<String, Object>> value(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "hashcode", required = false) String hashCode) {
+	@DeleteMapping
+	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "hashcode", required = false) String hashCode) {
 		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(hashCode)){
 			return new HashMap<>();
 		}
 		return dataHelper.wipeCache(id, hashCode);
 	}
 
-//	/**
-//	 * 清除数据
-//	 *
-//	 * @param id 缓存id
-//	 * @param hashCode  哈希值，支持：方法签名哈希值、缓存哈希值
-//	 */
-//	@GetMapping("/wipeall")
-//	public Map<String, Map<String, Object>> value(@RequestParam(value = "id", required = false) String id, @RequestParam("hashcode") int hashCode) {
-//		dataHelper.wipeCache(hashCode);
-//		return dataHelper.getCaches(null, null);
-//	}
+	/**
+	 * 清除所有数据
+	 */
+	@DeleteMapping("/all")
+	public Map<String, Map<String, Object>> deleteAll() {
+		return dataHelper.wipeCache(null,null);
+	}
 }

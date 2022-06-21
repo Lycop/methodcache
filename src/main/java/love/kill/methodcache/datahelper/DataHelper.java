@@ -1,9 +1,10 @@
 package love.kill.methodcache.datahelper;
 
+import org.springframework.util.StringUtils;
+
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 数据缓存
@@ -67,7 +68,41 @@ public interface DataHelper {
 	 * 清空数据
 	 *
 	 * @param id 缓存ID
-	 * @param hashCode 缓存哈希值
+	 * @param cacheHashCode 缓存哈希值
 	 * */
-	Map<String, Map<String,Object>> wipeCache(String id, String hashCode);
+	Map<String, Map<String,Object>> wipeCache(String id, String cacheHashCode);
+
+
+	/**
+	 * 过滤缓存信息
+	 * */
+	@SuppressWarnings("unchecked")
+	default Map<String, Map<String, Object>> filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
+		if(!StringUtils.isEmpty(select)){
+			String args = cacheDataModel.getArgs();
+			if(!StringUtils.isEmpty(args) && !args.contains(select)){
+				return cacheMap;
+			}
+		}
+
+		Map<String,Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
+			Map<String,Object> map = new HashMap<>();
+			map.put("id",cacheDataModel.getId());
+			map.put("remark",cacheDataModel.getRemark());
+			return map;
+		});
+
+		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
+
+		Map<String,Object> cacheInfo = new HashMap<>();
+		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
+		cacheInfo.put("args",cacheDataModel.getArgs());
+		cacheInfo.put("data",cacheDataModel.getData());
+		cacheInfo.put("cacheTime",cacheDataModel.getFormatCacheTime());
+		cacheInfo.put("expireTime",cacheDataModel.getFormatExpireTime());
+		cacheInfoList.add(cacheInfo);
+
+		return cacheMap;
+	}
+
 }

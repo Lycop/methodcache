@@ -42,13 +42,13 @@ public class MemoryDataHelper implements DataHelper {
 
 	/**
 	 * 缓存数据
-	 * 内容：<方法签名,<方法入参哈希,数据>>
+	 * 内容：<方法签名,<缓存哈希值,数据>>
 	 * */
 	private final static Map<String, Map<Integer, CacheDataModel>> cacheData = new ConcurrentHashMap<>();
 
 	/**
 	 * 缓存数据过期信息
-	 * 内容：<过期时间（时间戳，毫秒）,<方法签名,方法入参哈希>>
+	 * 内容：<过期时间(时间戳，毫秒),<方法签名,[缓存哈希值]>>
 	 * */
 	private final static Map<Long, Map<String,Set<Integer>>> dataExpireInfo = new ConcurrentHashMap<>();
 
@@ -86,12 +86,12 @@ public class MemoryDataHelper implements DataHelper {
 						}
 
 						// 移除过期缓存数据
-						Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp); // <方法签名,方法入参哈希集合>
+						Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp); // <方法签名,[缓存哈希值]>
 						Set<String> methodSignatureSet =  methodArgsHashCodeMap.keySet();
 						for (String methodSignature : methodSignatureSet) {
-							Set<Integer> argsHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
-							for(Integer argsHashCode : argsHashCodeSet){
-								doRemoveData(methodSignature,argsHashCode);
+							Set<Integer> cacheHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
+							for(Integer cacheHashCode : cacheHashCodeSet){
+								doRemoveData(methodSignature,cacheHashCode);
 							}
 
 							methodArgsHashCodeMap.remove(methodSignature);
@@ -114,18 +114,16 @@ public class MemoryDataHelper implements DataHelper {
 	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark) {
 
 		String methodSignature = method.toGenericString(); // 方法签名
-		int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
-		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
-		String argsInfo = Arrays.toString(args); // 入参信息
-		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode));
+		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希值
+		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希值
+		String argsInfo = Arrays.toString(args); // 入参内容
+		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)); // 缓存哈希值
 
 		if(StringUtils.isEmpty(id)){
-			id = String.valueOf( methodSignature.hashCode());
+			id = String.valueOf(methodSignature.hashCode());
 		}
 
-		CacheDataModel cacheDataModel;
-
-			cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
+		CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,cacheHashCode);
 			log(String.format(  "\n ************* CacheData *************" +
 								"\n **--------- 从内存中获取缓存 ------- **" +
 								"\n ** 方法签名：%s" +
@@ -141,9 +139,9 @@ public class MemoryDataHelper implements DataHelper {
 
 		if (cacheDataModel == null || cacheDataModel.isExpired()) {
 			try {
-				// 没有获取到数据或者数据已过期，加锁再次尝试获取
+				// 加锁再次获取
 				cacheDataLock.lock();
-				cacheDataModel = getDataFromMemory(methodSignature, argsHashCode);
+				cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode);
 				log(String.format(	"\n ************* CacheData *************" +
 									"\n **------- 从内存获取缓存(加锁) ----- **" +
 									"\n ** 方法签名：%s" +
@@ -204,43 +202,43 @@ public class MemoryDataHelper implements DataHelper {
 		}
 
 
-			if(refreshData){
+		if (refreshData) {
 
-				final String finalId = id;
+			final String finalId = id;
 
-				// 刷新数据
-				executorService.execute(()->{
-					try {
-						cacheDataLock.lock();
-						Object data = actualDataFunctional.getActualData();
-						if (data != null) {
-							long expirationTime = actualDataFunctional.getExpirationTime();
-							log(String.format(  "\n ************* CacheData *************" +
-												"\n ** --------- 刷新缓存至内存 -------- **" +
-												"\n ** 方法签名：%s" +
-												"\n ** 方法入参：%s" +
-												"\n ** 缓存数据：%s" +
-												"\n ** 过期时间：%s" +
-												"\n *************************************",
-									method,
-									Arrays.toString(args),
-									data,
-									formatDate(expirationTime)));
+			// 刷新数据
+			executorService.execute(() -> {
+				try {
+					cacheDataLock.lock();
+					Object data = actualDataFunctional.getActualData();
+					if (data != null) {
+						long expirationTime = actualDataFunctional.getExpirationTime();
+						log(String.format(	"\n ************* CacheData *************" +
+											"\n ** --------- 刷新缓存至内存 -------- **" +
+											"\n ** 方法签名：%s" +
+											"\n ** 方法入参：%s" +
+											"\n ** 缓存数据：%s" +
+											"\n ** 过期时间：%s" +
+											"\n *************************************",
+								method,
+								Arrays.toString(args),
+								data,
+								formatDate(expirationTime)));
 
-							setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, finalId, remark);
-						}
-					} catch (Throwable throwable) {
-						throwable.printStackTrace();
-						logger.info("\n ************* CacheData *************" +
-									"\n ** ---- 异步更新数据至内存发生异常 --- **" +
-									"\n 异常信息：" + throwable.getMessage() +
-									"\n *************************************");
-					}finally {
-						cacheDataLock.unlock();
+						setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, finalId, remark);
 					}
-				});
-			}
-			return cacheDataModel.getData();
+				} catch (Throwable throwable) {
+					throwable.printStackTrace();
+					logger.info("\n ************* CacheData *************" +
+								"\n ** ---- 异步更新数据至内存发生异常 --- **" +
+								"\n 异常信息：" + throwable.getMessage() +
+								"\n *************************************");
+				} finally {
+					cacheDataLock.unlock();
+				}
+			});
+		}
+		return cacheDataModel.getData();
 
 
 	}
@@ -250,120 +248,122 @@ public class MemoryDataHelper implements DataHelper {
 
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 
-		List<Map<Integer, CacheDataModel>> dataModelMapValues= new ArrayList<>(cacheData.values()); //cacheData <方法签名,<方法入参哈希,数据>>
-		for(Map<Integer, CacheDataModel> dataModelMap : dataModelMapValues){
+		Set<Map<Integer, CacheDataModel>> dataModelMapSet = new HashSet<>(cacheData.values()); //缓存数据
+		for(Map<Integer, CacheDataModel> dataModelMap : dataModelMapSet){ // <缓存哈希值,数据>
 			if(dataModelMap.isEmpty()){
 				continue;
 			}
-			List<CacheDataModel> dataModelList = new ArrayList<>(dataModelMap.values());
-			for(CacheDataModel cacheDataModel : dataModelList){
-				if(cacheDataModel.isExpired()){
-					// 缓存已过期
+
+			Set<CacheDataModel> dataModelSet;
+
+			if(StringUtils.isEmpty(match)){
+				dataModelSet = new HashSet<>(dataModelMap.values());
+			}else {
+				// 模糊匹配，支持：方法签名、缓存哈希值、缓存ID
+				dataModelSet = new HashSet<>();
+				for(Integer cacheHashCode : dataModelMap.keySet()){
+					if(String.valueOf(cacheHashCode).contains(match)){
+						CacheDataModel dataModel = dataModelMap.get(cacheHashCode);
+
+						if(dataModel.isExpired()){
+							continue;
+						}
+						dataModelSet.add(dataModel);
+					}
+				}
+
+				for(CacheDataModel dataModel : dataModelMap.values()){
+					if(dataModel.isExpired()){
+						continue;
+					}
+
+					String methodSignature = dataModel.getMethodSignature();
+					String id = dataModel.getId();
+
+					if(methodSignature.contains(match) || id.contains(match)){
+						dataModelSet.add(dataModel);
+					}
+				}
+			}
+
+			for (CacheDataModel dataModel : dataModelSet) {
+				if(dataModel == null || dataModel.isExpired()){
 					continue;
 				}
 
-				String methodSignature = cacheDataModel.getMethodSignature();
-
-				if(StringUtils.isEmpty(match)){
-					putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
-				}else {
-//					String id = cacheDataModel.getId();
-//					String remark = cacheDataModel.getRemark();
-//					if((!StringUtils.isEmpty(id) && id.contains(match)) || (!StringUtils.isEmpty(remark) && remark.contains(match)) || methodSignature.contains(match)){
-//						putCacheInfo(cacheMap, methodSignature, cacheDataModel, select);
-//					}
-				}
+				filterDataModel(cacheMap, dataModel, select);
 			}
 
 		}
 		return cacheMap;
 	}
 
-	@SuppressWarnings("unchecked")
-	private void putCacheInfo(Map<String, Map<String,Object>> cacheMap, String methodSignature, CacheDataModel cacheDataModel, String select){
-
-		if(!StringUtils.isEmpty(select)){
-			String args = cacheDataModel.getArgs();
-			if(!StringUtils.isEmpty(args) && !args.contains(select)){
-				return;
-			}
-		}
-
-		Map<String,Object> keyMap = cacheMap.computeIfAbsent(methodSignature, k -> {
-			Map<String,Object> map = new HashMap<>();
-//			map.put("id",cacheDataModel.getId());
-			map.put("remark",cacheDataModel.getRemark());
-			return map;
-		});
-
-		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
-
-		Map<String,Object> cacheInfo = new HashMap<>();
-		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
-		cacheInfo.put("args",cacheDataModel.getArgs());
-		cacheInfo.put("data",cacheDataModel.getData());
-		cacheInfo.put("cacheTime",cacheDataModel.getFormatCacheTime());
-		cacheInfo.put("expireTime",cacheDataModel.getFormatExpireTime());
-
-		cacheInfoList.add(cacheInfo);
-	}
-
 
 	@Override
 	public Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode) {
-//		List<Map<Integer, CacheDataModel>> dataModelMapValues = new ArrayList<>(cacheData.values()); // cacheData <方法签名,<方法入参哈希,数据>>
-//		if (dataModelMapValues.size() <= 0) {
-//			return;
-//		}
-//
-//		try {
-//			cacheDataLock.lock();
-//
-//			dataModelMapValues = new ArrayList<>(cacheData.values());
-//			if (dataModelMapValues.size() <= 0) {
-//				return;
-//			}
-//
-//			for (Map<Integer, CacheDataModel> dataModelMap : dataModelMapValues) {
-//				if (dataModelMap.isEmpty()) {
-//					continue;
-//				}
-//				List<CacheDataModel> dataModelList = new ArrayList<>(dataModelMap.values());
-//				for (CacheDataModel cacheDataModel : dataModelList) {
-//
-//					if (cacheDataModel == null || cacheDataModel.isExpired()) {
-//						// 缓存已过期
-//						continue;
-//					}
-//
-//					if (cacheDataModel.getCacheHashCode() == cacheHashCode) {
-//						cacheDataModel.expired();
-//						setDataToMemory(cacheDataModel);
-//						break;
-//					}
-//				}
-//			}
-//
-//		} catch (Throwable throwable) {
-//			throwable.printStackTrace();
-//		} finally {
-//			cacheDataLock.unlock();
-//		}
 
-		return null;
+		Map<String, Map<String, Object>> delCacheMap = new HashMap<>();
+
+		Set<Map<Integer, CacheDataModel>> dataModelMapSet = new HashSet<>(cacheData.values()); //缓存数据
+
+		try {
+			cacheDataLock.lock();
+
+			Set<Integer> removeCacheHashCode = new HashSet<>();
+			for (Map<Integer, CacheDataModel> dataModelMap : dataModelMapSet) { // <缓存哈希值,数据>
+				if (dataModelMap.isEmpty()) {
+					continue;
+				}
+
+				for(Integer key : dataModelMap.keySet()){
+					CacheDataModel dataModel = dataModelMap.get(key);
+					if(dataModel == null || dataModel.isExpired()){
+						continue;
+					}
+
+					if (	(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)) ||
+							id.equals(dataModel.getId()) ||
+							cacheHashCode.equals(String.valueOf(dataModel.getCacheHashCode()))
+					) {
+						dataModel.expired();
+
+						dataModelMap.remove(key);
+						removeCacheHashCode.add(dataModel.getCacheHashCode());
+						filterDataModel(delCacheMap, dataModel, "");
+					}
+				}
+			}
+
+			if(removeCacheHashCode.size() > 0){
+				Set<Map<String,Set<Integer>>>  dataExpireInfoValues = new HashSet<>(dataExpireInfo.values()); //<过期时间(时间戳，毫秒),<方法签名,[缓存哈希值]>>
+				for(Map<String,Set<Integer>> dataExpireInfoValue : dataExpireInfoValues){
+					for(Set<Integer> c : dataExpireInfoValue.values()){
+//						c.removeAll(removeCacheHashCode);
+						// TODO: 2022/6/10  
+					}
+				}
+			}
+
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			cacheDataLock.unlock();
+		}
+
+		return delCacheMap;
 	}
 
 	/**
 	 * 从内存获取数据
 	 *
 	 * @param methodSignature 方法签名
-	 * @param argsHashCode 入参哈希
+	 * @param cacheHashCode 缓存哈希值
 	 * */
-	private static CacheDataModel getDataFromMemory(String methodSignature, Integer argsHashCode){
+	private static CacheDataModel getDataFromMemory(String methodSignature, Integer cacheHashCode){
 
 		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
 		if(cacheDataModelMap != null){
-			return cacheDataModelMap.get(argsHashCode);
+			return cacheDataModelMap.get(cacheHashCode);
 		}
 
 		return null;
@@ -382,9 +382,12 @@ public class MemoryDataHelper implements DataHelper {
 	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToMemory(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode,  Object data, long expireTime, String id, String remark) {
+
 		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, data, expireTime);
 
-//		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, methodSignature.hashCode(), args, argsHashCode, data, expireTime);
+		if(!StringUtils.isEmpty(id)){
+			cacheDataModel.setId(id);
+		}
 
 		if(!StringUtils.isEmpty(remark)){
 			cacheDataModel.setRemark(remark);
@@ -396,23 +399,21 @@ public class MemoryDataHelper implements DataHelper {
 
 	/**
 	 * 缓存数据至内存
-	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToMemory(CacheDataModel cacheDataModel) {
 
 		String methodSignature = cacheDataModel.getMethodSignature();
-		int argsHashCode = cacheDataModel.getArgsHashCode();
+		int cacheHashCode = cacheDataModel.getCacheHashCode();
 
 		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
-		cacheDataModelMap.put(argsHashCode,cacheDataModel);
+		cacheDataModelMap.put(cacheHashCode,cacheDataModel);
 
 		long expireTime = cacheDataModel.getExpireTime();
 
-		// 缓存过期时间
 		if (expireTime > 0L) {
-			// 记录缓存数据过期信息 <过期时间（时间戳，毫秒）,<方法签名,方法入参哈希>>
+			// 记录缓存数据过期信息 <过期时间（时间戳，毫秒）,<方法签名,缓存哈希值>>
 			Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.computeIfAbsent(expireTime, k -> new HashMap<>());
-			methodArgsHashCodeMap.computeIfAbsent(methodSignature,k->new HashSet<>()).add(argsHashCode);
+			methodArgsHashCodeMap.computeIfAbsent(methodSignature,k->new HashSet<>()).add(cacheHashCode);
 		}
 
 	}
@@ -420,9 +421,9 @@ public class MemoryDataHelper implements DataHelper {
 	/**
 	 * 移除过期数据
 	 * */
-	private static void doRemoveData(String methodSignature, Integer argsHashCode) {
+	private static void doRemoveData(String methodSignature, Integer cacheHashCode) {
 		try {
-			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,argsHashCode);
+			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,cacheHashCode);
 			if(cacheDataModel != null && cacheDataModel.isExpired()){
 
 				log(String.format(  "\n ************* CacheData *************" +
@@ -433,9 +434,8 @@ public class MemoryDataHelper implements DataHelper {
 						methodSignature,
 						cacheDataModel.getArgs()));
 
-				// <方法签名,<方法入参哈希,数据>>
-				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature);
-				cacheDataModelMap.remove(argsHashCode);
+				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature); // <缓存哈希值,数据>
+				cacheDataModelMap.remove(cacheHashCode);
 				if(cacheDataModelMap.isEmpty()){
 					cacheData.remove(methodSignature);
 				}
@@ -453,5 +453,29 @@ public class MemoryDataHelper implements DataHelper {
 		if(enableLog){
 			logger.info(info);
 		}
+	}
+
+	public static void main(String[] args) {
+
+		Integer integer1 = 1;
+		Integer integer2 = 2;
+		Integer integer3 = 3;
+
+		Set<Integer> set1 = new HashSet<>();
+		set1.add(integer1);
+		set1.add(integer2);
+
+		Set<Integer> set2 = new HashSet<>();
+		set2.add(integer3);
+
+
+		Map<String,Set<Integer>> mapA = new HashMap<>();
+		mapA.put("1",set1);
+		mapA.put("2",set2);
+
+		System.out.println(">>>" + mapA.values());
+
+
+
 	}
 }
