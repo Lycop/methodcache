@@ -60,40 +60,36 @@ public class MemoryDataHelper implements DataHelper {
 
 
 	static {
-
 		/**
 		 * 剔除过期数据
 		 * */
-		Executors.newSingleThreadExecutor().execute(()->{
-			while (true){
-				List<Long> expireTimeStampKeySetKeyList;
-				Set<Long> expireTimeStampKeySet;
+		Executors.newSingleThreadExecutor().execute(() -> {
+			while (true) {
+				List<Long> expireTimeStampKeyList;
 				try {
 					cacheDataLock.lock();
-					expireTimeStampKeySet = dataExpireInfo.keySet();
-					if (expireTimeStampKeySet.size() <= 0) {
+					expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet());
+					if (expireTimeStampKeyList.size() <= 0) {
 						// 没有过期信息
 						continue;
 					}
 
-					expireTimeStampKeySetKeyList = new ArrayList<>(expireTimeStampKeySet);
-					expireTimeStampKeySetKeyList.sort((l1, l2) -> (int) (l1 - l2));
+					expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
 					long nowTimeStamp = new Date().getTime();
-					for (long expireTimeStamp : expireTimeStampKeySetKeyList) {
+					for (long expireTimeStamp : expireTimeStampKeyList) {
 						if (expireTimeStamp > nowTimeStamp) {
 							// 最接近当前时间的数据还没到期
 							break;
 						}
 
 						// 移除过期缓存数据
-						Map<String,Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp); // <方法签名,[缓存哈希值]>
-						Set<String> methodSignatureSet =  methodArgsHashCodeMap.keySet();
+						Map<String, Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp); // <方法签名,[缓存哈希值]>
+						Set<String> methodSignatureSet = methodArgsHashCodeMap.keySet();
 						for (String methodSignature : methodSignatureSet) {
 							Set<Integer> cacheHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
-							for(Integer cacheHashCode : cacheHashCodeSet){
-								doRemoveData(methodSignature,cacheHashCode);
+							for (Integer cacheHashCode : cacheHashCodeSet) {
+								doRemoveData(methodSignature, cacheHashCode);
 							}
-
 							methodArgsHashCodeMap.remove(methodSignature);
 						}
 						dataExpireInfo.remove(expireTimeStamp);
@@ -325,7 +321,7 @@ public class MemoryDataHelper implements DataHelper {
 					String dataModelId = dataModel.getId();
 					String dataModelCacheHashCode = String.valueOf(dataModel.getCacheHashCode());
 
-					if (	(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)) ||
+					if ((StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)) ||
 							dataModelId.equals(id) ||
 							dataModelCacheHashCode.equals(cacheHashCode)
 					) {
@@ -339,10 +335,20 @@ public class MemoryDataHelper implements DataHelper {
 			}
 
 			if(removeCacheHashCode.size() > 0){
-				Set<Map<String,Set<Integer>>>  dataExpireInfoValues = new HashSet<>(dataExpireInfo.values()); //Set<方法签名,[缓存哈希值]>
-				for(Map<String,Set<Integer>> dataExpireInfoValue : dataExpireInfoValues){
-					for(Set<Integer> cacheHashCodeInDataExpireInfo : dataExpireInfoValue.values()){
+				Iterator<Map<String, Set<Integer>>> dataExpireInfoValuesIterator = dataExpireInfo.values().iterator(); // <方法签名,[缓存哈希值]>
+				while (dataExpireInfoValuesIterator.hasNext()){
+					Map<String,Set<Integer>> dataExpireInfoValue = dataExpireInfoValuesIterator.next();
+					Iterator<Set<Integer>> dataExpireInfoValueIterator = dataExpireInfoValue.values().iterator();
+					while (dataExpireInfoValueIterator.hasNext()){
+						Set<Integer> cacheHashCodeInDataExpireInfo = dataExpireInfoValueIterator.next();
 						cacheHashCodeInDataExpireInfo.removeAll(removeCacheHashCode);
+						if(cacheHashCodeInDataExpireInfo.isEmpty()){
+							dataExpireInfoValueIterator.remove();
+						}
+					}
+
+					if(dataExpireInfoValue.isEmpty()){
+						dataExpireInfoValuesIterator.remove();
 					}
 				}
 			}
