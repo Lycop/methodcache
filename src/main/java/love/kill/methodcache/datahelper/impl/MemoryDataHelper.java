@@ -322,9 +322,12 @@ public class MemoryDataHelper implements DataHelper {
 						continue;
 					}
 
+					String dataModelId = dataModel.getId();
+					String dataModelCacheHashCode = String.valueOf(dataModel.getCacheHashCode());
+
 					if (	(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)) ||
-							id.equals(dataModel.getId()) ||
-							cacheHashCode.equals(String.valueOf(dataModel.getCacheHashCode()))
+							dataModelId.equals(id) ||
+							dataModelCacheHashCode.equals(cacheHashCode)
 					) {
 						dataModel.expired();
 						removeCacheHashCode.add(dataModel.getCacheHashCode());
