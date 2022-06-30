@@ -1,11 +1,8 @@
 package love.kill.methodcache.datahelper;
 
-import com.alibaba.fastjson.JSONObject;
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * 缓存数据模型
@@ -154,21 +151,6 @@ public class CacheDataModel implements Serializable {
 				", remark=" + remark +
 				", id=" + id +
 				'}';
-	}
-
-
-	public String toJSONString(){
-		Map<String,Object> objectMap = new HashMap<>();
-		objectMap.put("methodSignature",methodSignature);
-		objectMap.put("methodSignatureHashCode",methodSignatureHashCode);
-		objectMap.put("args",args);
-		objectMap.put("argsHashCode",argsHashCode);
-		objectMap.put("data",data);
-		objectMap.put("cacheTime",formatDate(cacheTime));
-		objectMap.put("expireTime",formatDate(expireTime));
-		objectMap.put("remark",remark);
-		objectMap.put("id",id);
-		return JSONObject.toJSONString(objectMap);
 	}
 
 	private String formatDate(long timeStamp){

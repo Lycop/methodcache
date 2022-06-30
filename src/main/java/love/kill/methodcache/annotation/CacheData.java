@@ -60,4 +60,9 @@ public @interface CacheData {
 	 * 备注
 	 * */
 	String remark() default "";
+
+	/**
+	 * 缓存null
+	 * */
+	boolean nullable() default true;
 }

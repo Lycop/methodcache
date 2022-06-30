@@ -79,7 +79,7 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark){
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable){
 
 		String methodSignature = method.toGenericString(); // 方法签名
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
@@ -140,7 +140,7 @@ public class RedisDataHelper implements DataHelper {
 							argsInfo,
 							data));
 
-					if (data != null) {
+					if (data != null || nullable) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
 						log(String.format(	"\n ************* CacheData *************" +
 											"\n ** -------- 设置缓存至Redis ------- **" +
@@ -178,10 +178,9 @@ public class RedisDataHelper implements DataHelper {
 			// 刷新数据
 			executorService.execute(() -> {
 				try {
-					while (!redisUtil.lock(redisLockKey)) {
-					}
+					while (!redisUtil.lock(redisLockKey)) {}
 					Object data = actualDataFunctional.getActualData();
-					if (data != null) {
+					if (data != null || nullable) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
 						log(String.format("\n ************* CacheData *************" +
 										"\n ** -------- 刷新缓存至Redis ------- **" +

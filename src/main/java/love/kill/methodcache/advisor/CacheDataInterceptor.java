@@ -49,6 +49,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 			long expiration = cacheData.expiration(); // 数据过期时间，毫秒
 			long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
 			CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
+			boolean nullable = cacheData.nullable(); // 空返回
 
 			return dataHelper.getData(method, args, refresh, new DataHelper.ActualDataFunctional() {
 				@Autowired
@@ -65,7 +66,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 				public long getExpirationTime() {
 					return expirationTime(expiration,behindExpiration,capitalExpiration);
 				}
-			}, cacheData.id(), cacheData.remark());
+			}, cacheData.id(), cacheData.remark(), nullable);
 
 
 		}catch (Exception e){

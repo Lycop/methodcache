@@ -111,7 +111,7 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark) {
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) {
 
 		String methodSignature = method.toGenericString(); // 方法签名
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希值
@@ -169,7 +169,7 @@ public class MemoryDataHelper implements DataHelper {
 							argsInfo,
 							data));
 
-					if (data != null) {
+					if (data != null || nullable) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
 						log(String.format(	"\n ************* CacheData *************" +
 											"\n ** --------- 设置缓存至内存 -------- **" +
@@ -211,7 +211,7 @@ public class MemoryDataHelper implements DataHelper {
 				try {
 					cacheDataLock.lock();
 					Object data = actualDataFunctional.getActualData();
-					if (data != null) {
+					if (data != null || nullable) {
 						long expirationTime = actualDataFunctional.getExpirationTime();
 						log(String.format(	"\n ************* CacheData *************" +
 											"\n ** --------- 刷新缓存至内存 -------- **" +
@@ -314,8 +314,9 @@ public class MemoryDataHelper implements DataHelper {
 				if (dataModelMap.isEmpty()) {
 					continue;
 				}
-
-				for(Integer key : dataModelMap.keySet()){
+				Iterator<Integer> iterator = dataModelMap.keySet().iterator();
+				while (iterator.hasNext()){
+					Integer key = iterator.next();
 					CacheDataModel dataModel = dataModelMap.get(key);
 					if(dataModel == null || dataModel.isExpired()){
 						continue;
@@ -326,27 +327,26 @@ public class MemoryDataHelper implements DataHelper {
 							cacheHashCode.equals(String.valueOf(dataModel.getCacheHashCode()))
 					) {
 						dataModel.expired();
-
-						dataModelMap.remove(key);
 						removeCacheHashCode.add(dataModel.getCacheHashCode());
 						filterDataModel(delCacheMap, dataModel, "");
+
+						iterator.remove();
 					}
 				}
 			}
 
 			if(removeCacheHashCode.size() > 0){
-				Set<Map<String,Set<Integer>>>  dataExpireInfoValues = new HashSet<>(dataExpireInfo.values()); //<过期时间(时间戳，毫秒),<方法签名,[缓存哈希值]>>
+				Set<Map<String,Set<Integer>>>  dataExpireInfoValues = new HashSet<>(dataExpireInfo.values()); //Set<方法签名,[缓存哈希值]>
 				for(Map<String,Set<Integer>> dataExpireInfoValue : dataExpireInfoValues){
-					for(Set<Integer> c : dataExpireInfoValue.values()){
-//						c.removeAll(removeCacheHashCode);
-						// TODO: 2022/6/10  
+					for(Set<Integer> cacheHashCodeInDataExpireInfo : dataExpireInfoValue.values()){
+						cacheHashCodeInDataExpireInfo.removeAll(removeCacheHashCode);
 					}
 				}
 			}
 
-
 		} catch (Exception e) {
 			e.printStackTrace();
+		}finally {
 			cacheDataLock.unlock();
 		}
 
@@ -453,29 +453,5 @@ public class MemoryDataHelper implements DataHelper {
 		if(enableLog){
 			logger.info(info);
 		}
-	}
-
-	public static void main(String[] args) {
-
-		Integer integer1 = 1;
-		Integer integer2 = 2;
-		Integer integer3 = 3;
-
-		Set<Integer> set1 = new HashSet<>();
-		set1.add(integer1);
-		set1.add(integer2);
-
-		Set<Integer> set2 = new HashSet<>();
-		set2.add(integer3);
-
-
-		Map<String,Set<Integer>> mapA = new HashMap<>();
-		mapA.put("1",set1);
-		mapA.put("2",set2);
-
-		System.out.println(">>>" + mapA.values());
-
-
-
 	}
 }

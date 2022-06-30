@@ -1,12 +1,13 @@
 package love.kill.methodcache;
 
 import love.kill.methodcache.advisor.CacheDataInterceptor;
-import love.kill.methodcache.advisor.CacheDataPointcutAdvisor;
+import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
 import love.kill.methodcache.util.RedisUtil;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
+import org.springframework.aop.support.StaticMethodMatcherPointcutAdvisor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -19,6 +20,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.lang.reflect.Method;
 
 @Configuration
 @EnableConfigurationProperties(MethodcacheProperties.class)
@@ -58,15 +61,21 @@ public class MethodcacheAutoConfiguration {
 	}
 
 	@Bean
-	public CacheDataPointcutAdvisor methodPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor,MethodcacheProperties methodcacheProperties) {
-		CacheDataPointcutAdvisor advisor = new CacheDataPointcutAdvisor();
-		advisor.setAdvice(cacheDataInterceptor);
-		advisor.setOrder(methodcacheProperties.getOrder());
-		return advisor;
+	public CacheDataInterceptor cacheDataInterceptor(MethodcacheProperties methodcacheProperties, @Autowired(required = false) DataHelper dataHelper) {
+		return new CacheDataInterceptor(methodcacheProperties,dataHelper);
 	}
 
 	@Bean
-	public CacheDataInterceptor cacheDataInterceptor(MethodcacheProperties methodcacheProperties, @Autowired(required = false) DataHelper dataHelper) {
-		return new CacheDataInterceptor(methodcacheProperties,dataHelper);
+	public StaticMethodMatcherPointcutAdvisor methodPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor,MethodcacheProperties methodcacheProperties) {
+		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor(){
+			@Override
+			public boolean matches(Method method, Class<?> targetClass) {
+				// 拦截被 @CacheData 注解的接口或类
+				return method.isAnnotationPresent(CacheData.class) || targetClass.isAnnotationPresent(CacheData.class);
+			}
+		};
+		advisor.setAdvice(cacheDataInterceptor);
+		advisor.setOrder(methodcacheProperties.getOrder());
+		return advisor;
 	}
 }

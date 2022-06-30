@@ -26,7 +26,7 @@ public interface DataHelper {
 	 * @param actualDataFunctional 请求模型
 	 * @return 数据
 	 * */
-	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark) throws Exception;
+	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Exception;
 
 
 	/**
@@ -69,12 +69,13 @@ public interface DataHelper {
 	 *
 	 * @param id 缓存ID
 	 * @param cacheHashCode 缓存哈希值
+	 * @return 删除的缓存
 	 * */
 	Map<String, Map<String,Object>> wipeCache(String id, String cacheHashCode);
 
 
 	/**
-	 * 过滤缓存信息
+	 * 筛选符合入参的缓存
 	 * */
 	@SuppressWarnings("unchecked")
 	default Map<String, Map<String, Object>> filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
