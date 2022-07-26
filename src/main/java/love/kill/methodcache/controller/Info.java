@@ -19,7 +19,7 @@ public class Info {
 	public Map version(){
 		Map<String,String> versionMap = new HashMap<>();
 		versionMap.put("version","2.0.0");
-		versionMap.put("release time","2022-04-15");
+		versionMap.put("release time","2022-07-26");
 		return versionMap;
 	}
 }

@@ -19,7 +19,7 @@ public @interface CacheData {
 
 	/**
 	 * id
-	 * 标识一批缓存，可以用来清除缓存
+	 * 标识缓存，支持根据id清除此类缓存。{@link love.kill.methodcache.controller.Cache#delete}
 	 * */
 	String id() default "";
 
@@ -40,19 +40,26 @@ public @interface CacheData {
 	/**
 	 * 宽限期，毫秒
 	 *
-	 * 数据宽限过期时间，默认为0L。如果设置了此值大于0，则数据会在{@link #expiration()}基础上进行随机累加。
-	 * 此值可以用于避免数据同时失效引起的缓存雪崩。
-	 * 如：过期时间为30000毫秒，过期宽限期为10000毫秒，则数据会在30000～40000之间随机一个值过期。
+	 * 数据宽限过期时间，默认为0(L)。如果此值大于0，则数据会在{@link #expiration()}基础上进行随机累加。
+	 * 一般情况下，此值可以用于避免数据同时失效引起的缓存雪崩。如：
+	 * 过期时间为30000毫秒，过期宽限期为10000毫秒，则数据会在30000～40000之间随机一个值过期。
 	 * */
 	long behindExpiration() default 0L;
 
 	/**
-	 *  数据过期时间累加基础
+	 *  (数据过期)时间基础
 	 *
-	 *  设置一个日期类型，作为数据过期计算的基础时间进行累加，表示当前类型(秒/分钟/小时/日/月/年)下数据不失效。
-	 *  可选的范围：SECOND,MINUTE,HOUR,DAY,MONTH,YEAR
-	 *  例：设置小时(BasicExpiration.HOUR)，则意味着当前小时下数据不会失效。该数据返回时间为16:38:22，那
-	 *  么16:38:22~16:59:59是有效的，17:00:00开始计算失效时间。
+	 *  设置一个日期类型，作为数据过期计算的基础时间进行累加，表示当前(秒/分钟/小时/日/月/年)下数据不失效。
+	 *  可选的范围：
+	 *  			秒({@link love.kill.methodcache.annotation.CapitalExpiration.SECOND})
+	 *  			分钟({@link love.kill.methodcache.annotation.CapitalExpiration.MINUTE})
+	 *  			小时({@link love.kill.methodcache.annotation.CapitalExpiration.HOUR})
+	 *  			天({@link love.kill.methodcache.annotation.CapitalExpiration.DAY})
+	 *  			月({@link love.kill.methodcache.annotation.CapitalExpiration.MONTH})
+	 *  			年({@link love.kill.methodcache.annotation.CapitalExpiration.YEAR})
+	 *
+	 *  例如：小时，则意味着当前小时下数据不会失效。该数据返回时间为16:38:22，那么16:38:22~16:59:59是有
+	 *  效的，17:00:00开始计算失效时间。
 	 * */
 	CapitalExpiration capitalExpiration() default CapitalExpiration.SECOND;
 
@@ -63,6 +70,7 @@ public @interface CacheData {
 
 	/**
 	 * 缓存null
+	 * 默认为true，当请求结果返回为null依旧缓存；否则不缓存
 	 * */
 	boolean nullable() default true;
 }
