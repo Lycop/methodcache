@@ -35,17 +35,21 @@ public interface DataHelper {
 	interface ActualDataFunctional{
 		/**
 		 * 发起一次真实请求，缓存并返回该数据
+		 * @return 请求数据
 		 * */
 		Object getActualData() throws Throwable;
 
 		/**
 		 * 数据过期时间，时间戳
+		 * @return 过期时间
 		 * */
 		long getExpirationTime();
 	}
 
 	/**
 	 * 格式化时间
+	 * @param timeStamp 时间戳
+	 * @return 格式化后的时间
 	 * */
 	default String formatDate(long timeStamp){
 		try {
@@ -58,7 +62,8 @@ public interface DataHelper {
 
 	/**
 	 * 获取缓存
-	 *
+	 * @param match 匹配规则
+	 * @param select 筛选
 	 * @return key
 	 * */
 	Map<String, Map<String,Object>> getCaches(String match,String select);
@@ -76,6 +81,10 @@ public interface DataHelper {
 
 	/**
 	 * 筛选符合入参的缓存
+	 * @param cacheMap 缓存数据
+	 * @param cacheDataModel 待筛选的节点
+	 * @param select 筛选
+	 * @return 符合的缓存
 	 * */
 	@SuppressWarnings("unchecked")
 	default Map<String, Map<String, Object>> filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {

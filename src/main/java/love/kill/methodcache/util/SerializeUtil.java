@@ -18,6 +18,8 @@ public class SerializeUtil {
 
 	/**
 	 * 序列化
+	 * @param object 待序列化对象
+	 * @return 序列化结果
 	 **/
 	public static byte[] serizlize(Object object){
 		try {
@@ -33,6 +35,8 @@ public class SerializeUtil {
 
 	/**
 	 * 反序列化
+	 * @param bytes 序列化结果
+	 * @return 序列化对象
 	 **/
 	public static Object deserialize(byte[] bytes){
 		try {

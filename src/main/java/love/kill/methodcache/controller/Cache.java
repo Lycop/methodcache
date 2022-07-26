@@ -25,6 +25,7 @@ public class Cache {
 	 *
 	 * @param match  模糊匹配，支持：方法签名、缓存哈希值、缓存ID
 	 * @param select 筛选入参
+	 * @return 所有匹配成功的缓存
 	 */
 	@GetMapping
 	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "select", required = false) String select) {
@@ -36,6 +37,7 @@ public class Cache {
 	 *
 	 * @param id 缓存ID
 	 * @param hashCode 缓存哈希值
+	 * @return 删除的缓存
 	 */
 	@DeleteMapping
 	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "hashcode", required = false) String hashCode) {
@@ -47,6 +49,7 @@ public class Cache {
 
 	/**
 	 * 清除所有数据
+	 * @return 删除的缓存
 	 */
 	@DeleteMapping("/all")
 	public Map<String, Map<String, Object>> deleteAll() {

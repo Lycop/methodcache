@@ -24,7 +24,6 @@ public class RedisUtil {
 
 	/**
 	 * 查询数据
-	 *
 	 * @param key 键
 	 * @return 值
 	 */
@@ -34,7 +33,6 @@ public class RedisUtil {
 
 	/**
 	 * 插入数据
-	 *
 	 * @param key   键
 	 * @param value 值
 	 */
@@ -52,7 +50,7 @@ public class RedisUtil {
 	 *
 	 * @param key   键
 	 * @param value 值
-	 * @param timeout 超时(毫秒) 小于等于0设置无限期
+	 * @param timeout 超时(毫秒)，小于等于0设置无限期
 	 */
 	@SuppressWarnings("unchecked")
 	public void set(String key, Object value, long timeout) {
@@ -69,9 +67,8 @@ public class RedisUtil {
 
 	/**
 	 * 查询key
-	 *
 	 * @param pattern 匹配值
-	 * @return key
+	 * @return 匹配的key
 	 */
 	@SuppressWarnings("unchecked")
 	public Set<String> keys(String pattern) {
@@ -89,8 +86,8 @@ public class RedisUtil {
 
 	/**
 	 * 删除数据
-	 *
 	 * @param key 键
+	 * @return 删除成功
 	 */
 	@SuppressWarnings("unchecked")
 	public boolean del(String key) {
@@ -106,77 +103,10 @@ public class RedisUtil {
 		}
 	}
 
-
-
-
-
-//	/**
-//	 * 插入哈希数据
-//	 *
-//	 * @param key 哈希键
-//	 * @param field 字段
-//	 * @param value 值
-//	 * @return true 成功 false 失败
-//	 */
-//	public boolean hset(String key, String field, Object value) {
-//		try {
-//			redisTemplate.opsForHash().put(key,field,value);
-//			return true;
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//			return false;
-//		}
-//	}
-
-//	/**
-//	 * 获取哈希key
-//	 *
-//	 * @param key 哈希键
-//	 * @return 所有field
-//	 */
-//	public Set hkeys(String key) {
-//		return (key == null) ? null : redisTemplate.opsForHash().keys(key);
-//	}
-
-//	/**
-//	 * 获取哈希数据
-//	 *
-//	 * @param key 哈希键
-//	 * @param field 字段
-//	 * @return 值
-//	 */
-//	public Object hget(String key, String field) {
-//		return (key == null || field == null) ? null : redisTemplate.opsForHash().get(key,field);
-//	}
-
-//	/**
-//	 * 删除哈希数据
-//	 *
-//	 * @param key 哈希键
-//	 * @param field 字段
-//	 * @return 值
-//	 */
-//	public Long hdel(String key, String field) {
-//		return (key == null || field == null) ? null : redisTemplate.opsForHash().delete(key,field);
-//	}
-
-
-//	/**
-//	 * 批量获取哈希值
-//	 *
-//	 * @param key 哈希键
-//	 * @param fields 字段
-//	 * @return 值
-//	 */
-//	public List<Object> hMultiget(String key, List<String> fields) {
-//		return (key == null || fields == null) ? new ArrayList<>() : redisTemplate.opsForHash().multiGet(key,fields);
-//	}
-
-
 	/**
 	 * 加锁
 	 * @param key key值
-	 * @return 是否获取到
+	 * @return 加锁成功
 	 */
 	public boolean lock(String key) {
 		return RedisLockUtil.lock(redisTemplate,key,getLockValue(key),30 * 1000);
@@ -185,7 +115,7 @@ public class RedisUtil {
 	/**
 	 * 解锁
 	 * @param key key值
-	 * @return 是否获取到
+	 * @return 解锁成功
 	 */
 	public boolean unlock(String key) {
 		return RedisLockUtil.unlock(redisTemplate,key,getLockValue(key));
@@ -193,6 +123,8 @@ public class RedisUtil {
 
 	/**
 	 * 获取锁内容
+	 * @param key
+	 * @return 值
 	 * */
 	private String getLockValue(String key){
 		ConcurrentHashMap<String,String> kvMap  = threadLocal.get();

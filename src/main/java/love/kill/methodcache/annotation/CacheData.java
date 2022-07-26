@@ -51,12 +51,12 @@ public @interface CacheData {
 	 *
 	 *  设置一个日期类型，作为数据过期计算的基础时间进行累加，表示当前(秒/分钟/小时/日/月/年)下数据不失效。
 	 *  可选的范围：
-	 *  			秒({@link love.kill.methodcache.annotation.CapitalExpiration.SECOND})
-	 *  			分钟({@link love.kill.methodcache.annotation.CapitalExpiration.MINUTE})
-	 *  			小时({@link love.kill.methodcache.annotation.CapitalExpiration.HOUR})
-	 *  			天({@link love.kill.methodcache.annotation.CapitalExpiration.DAY})
-	 *  			月({@link love.kill.methodcache.annotation.CapitalExpiration.MONTH})
-	 *  			年({@link love.kill.methodcache.annotation.CapitalExpiration.YEAR})
+	 *  			秒({@link love.kill.methodcache.annotation.CapitalExpiration#SECOND})
+	 *  			分钟({@link love.kill.methodcache.annotation.CapitalExpiration#MINUTE})
+	 *  			小时({@link love.kill.methodcache.annotation.CapitalExpiration#HOUR})
+	 *  			天({@link love.kill.methodcache.annotation.CapitalExpiration#DAY})
+	 *  			月({@link love.kill.methodcache.annotation.CapitalExpiration#MONTH})
+	 *  			年({@link love.kill.methodcache.annotation.CapitalExpiration#YEAR})
 	 *
 	 *  例如：小时，则意味着当前小时下数据不会失效。该数据返回时间为16:38:22，那么16:38:22~16:59:59是有
 	 *  效的，17:00:00开始计算失效时间。

@@ -59,8 +59,10 @@ public class RedisLockUtil {
 
 	/**
 	 * 加锁(可重入锁)
-	 * @param key key值
-	 * @return 是否获取到
+	 * @param redisTemplate redisTemplate
+	 * @param key key
+	 * @param value value
+	 * @return 加锁成功
 	 */
 	public static boolean lock(RedisTemplate redisTemplate, String key, String value,long expireTime) {
 
@@ -71,6 +73,13 @@ public class RedisLockUtil {
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 	}
 
+	/**
+	 * 解锁(可重入锁)
+	 * @param redisTemplate redisTemplate
+	 * @param key key
+	 * @param value value
+	 * @return 解锁成功
+	 */
 	public static boolean unlock(RedisTemplate redisTemplate, String key, String value) {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(releaseScript);
