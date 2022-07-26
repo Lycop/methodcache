@@ -47,7 +47,7 @@ public @interface CacheData {
 	long behindExpiration() default 0L;
 
 	/**
-	 *  (数据过期)时间基础
+	 *  (数据过期)基础时间
 	 *
 	 *  设置一个日期类型，作为数据过期计算的基础时间进行累加，表示当前(秒/分钟/小时/日/月/年)下数据不失效。
 	 *  可选的范围：
