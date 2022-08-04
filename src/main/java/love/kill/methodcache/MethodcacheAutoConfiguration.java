@@ -24,7 +24,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import java.lang.reflect.Method;
 
 @Configuration
-@EnableConfigurationProperties(MethodcacheProperties.class)
+@EnableConfigurationProperties({MethodcacheProperties.class, SpringApplicationProperties.class})
 @ConditionalOnProperty(prefix = "methodcache",name = "enable" , havingValue = "true")
 @ComponentScan(basePackages = {"love.kill.methodcache.controller"})
 public class MethodcacheAutoConfiguration {
@@ -33,7 +33,7 @@ public class MethodcacheAutoConfiguration {
 	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
-	DataHelper redisDataHelper(RedisTemplate redisTemplate, MethodcacheProperties methodcacheProperties){
+	DataHelper redisDataHelper(RedisTemplate redisTemplate, MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties){
 
 		RedisTemplate<Object, Object> cacheRedisTemplate = new RedisTemplate<>();
 		cacheRedisTemplate.setConnectionFactory(redisTemplate.getConnectionFactory());
@@ -45,13 +45,13 @@ public class MethodcacheAutoConfiguration {
 		cacheRedisTemplate.setHashValueSerializer(stringRedisSerializer);
 		cacheRedisTemplate.afterPropertiesSet();
 
-		return new RedisDataHelper(methodcacheProperties, new RedisUtil(cacheRedisTemplate));
+		return new RedisDataHelper(new RedisUtil(cacheRedisTemplate), methodcacheProperties, springProperties);
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties){
-		return new MemoryDataHelper(methodcacheProperties);
+	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties){
+		return new MemoryDataHelper(methodcacheProperties, springProperties);
 	}
 
 	@Bean

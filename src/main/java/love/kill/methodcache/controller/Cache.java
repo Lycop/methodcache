@@ -2,6 +2,7 @@ package love.kill.methodcache.controller;
 
 import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,7 @@ import java.util.Map;
  *
  * @author Lycop
  */
+@ConditionalOnProperty(prefix = "methodcache",name = "enable-endpoint" , havingValue = "true")
 @RestController
 @RequestMapping("/methodcache/cache")
 public class Cache {

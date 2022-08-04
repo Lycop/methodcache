@@ -7,6 +7,11 @@ import org.springframework.core.Ordered;
 public class MethodcacheProperties {
 
 	/**
+	 * 名称
+	 * */
+	private String name;
+
+	/**
 	 * 开启缓存
 	 * */
 	private boolean enable = false;
@@ -17,6 +22,11 @@ public class MethodcacheProperties {
 	private boolean enableLog = false;
 
 	/**
+	 * 开启日志
+	 * */
+	private boolean enableEndpoint = false;
+
+	/**
 	 * 切面排序值
 	 *
 	 * 控制 Advisor 的执行顺序
@@ -24,6 +34,14 @@ public class MethodcacheProperties {
 	 * */
 	private int order = Ordered.LOWEST_PRECEDENCE;
 
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
 
 	public boolean isEnable() {
 		return enable;
@@ -39,6 +57,14 @@ public class MethodcacheProperties {
 
 	public void setEnableLog(boolean enableLog) {
 		this.enableLog = enableLog;
+	}
+
+	public boolean isEnableEndpoint() {
+		return enableEndpoint;
+	}
+
+	public void setEnableEndpoint(boolean enableEndpoint) {
+		this.enableEndpoint = enableEndpoint;
 	}
 
 	public int getOrder() {

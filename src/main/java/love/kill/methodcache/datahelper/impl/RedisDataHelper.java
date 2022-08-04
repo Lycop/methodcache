@@ -1,6 +1,7 @@
 package love.kill.methodcache.datahelper.impl;
 
 import love.kill.methodcache.MethodcacheProperties;
+import love.kill.methodcache.SpringApplicationProperties;
 import love.kill.methodcache.datahelper.CacheDataModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
@@ -59,7 +60,12 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * 配置属性
 	 * */
-	private MethodcacheProperties methodcacheProperties;
+	private final MethodcacheProperties methodcacheProperties;
+
+	/**
+	 * spring属性
+	 * */
+	private final SpringApplicationProperties applicationProperties;
 
 	/**
 	 * redis工具类
@@ -72,14 +78,20 @@ public class RedisDataHelper implements DataHelper {
 	private boolean enableLog;
 
 
-	public RedisDataHelper(MethodcacheProperties methodcacheProperties, RedisUtil redisUtil) {
-		this.methodcacheProperties = methodcacheProperties;
+	public RedisDataHelper(RedisUtil redisUtil, MethodcacheProperties methodcacheProperties, SpringApplicationProperties applicationProperties) {
 		this.redisUtil = redisUtil;
+		this.methodcacheProperties = methodcacheProperties;
+		this.applicationProperties = applicationProperties;
 		this.enableLog = methodcacheProperties.isEnableLog();
 	}
 
 	@Override
 	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable){
+
+		String applicationName; // 应用名
+		if(StringUtils.isEmpty(applicationName = methodcacheProperties.getName())){
+			applicationName = applicationProperties.getName();
+		}
 
 		String methodSignature = method.toGenericString(); // 方法签名
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
@@ -91,7 +103,13 @@ public class RedisDataHelper implements DataHelper {
 			id = String.valueOf( methodSignature.hashCode());
 		}
 
-		String cacheKey = methodSignature + CACHE_KEY_SEPARATION_CHARACTER + cacheHashCode + CACHE_KEY_SEPARATION_CHARACTER + id;
+		String cacheKey;
+		if(StringUtils.isEmpty(applicationName)){
+			cacheKey = methodSignature + CACHE_KEY_SEPARATION_CHARACTER + cacheHashCode + CACHE_KEY_SEPARATION_CHARACTER + id;
+		}else {
+			cacheKey = applicationName + CACHE_KEY_SEPARATION_CHARACTER + methodSignature + CACHE_KEY_SEPARATION_CHARACTER + cacheHashCode + CACHE_KEY_SEPARATION_CHARACTER + id;
+		}
+
 		String redisLockKey = getLockKey(cacheKey);
 
 		CacheDataModel cacheDataModel;
@@ -220,11 +238,11 @@ public class RedisDataHelper implements DataHelper {
 
 		Set<String> cacheKeys = new HashSet<>();
 		if(StringUtils.isEmpty(match)){
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null,null,null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, null)));
 		}else {
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(match,null,null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null,match,null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null,null,match)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), match, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, match, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, match)));
 		}
 
 		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
@@ -247,8 +265,14 @@ public class RedisDataHelper implements DataHelper {
 	 * @param cacheHashCode 入参哈希
 	 * @param id id
 	 * */
-	private String buildCacheKeyPattern(String methodSignature, String cacheHashCode, String id){
-		String cacheKeyPattern = "%{methodSignature}%" + CACHE_KEY_SEPARATION_CHARACTER + "%{cacheHashCode}%" + CACHE_KEY_SEPARATION_CHARACTER + "%{id}%";
+	private String buildCacheKeyPattern(String applicationName, String methodSignature, String cacheHashCode, String id){
+		String cacheKeyPattern = "%{applicationName}%" + CACHE_KEY_SEPARATION_CHARACTER + "%{methodSignature}%" + CACHE_KEY_SEPARATION_CHARACTER + "%{cacheHashCode}%" + CACHE_KEY_SEPARATION_CHARACTER + "%{id}%";
+
+		if(!StringUtils.isEmpty(applicationName)){
+			cacheKeyPattern = cacheKeyPattern.replace("%{applicationName}%", "*" + applicationName + "*");
+		}else {
+			cacheKeyPattern = cacheKeyPattern.replace("%{applicationName}%", "*");
+		}
 
 		if(!StringUtils.isEmpty(methodSignature)){
 			cacheKeyPattern = cacheKeyPattern.replace("%{methodSignature}%", "*" + methodSignature + "*");
@@ -279,14 +303,14 @@ public class RedisDataHelper implements DataHelper {
 		Set<String> cacheKeys = new HashSet<>();
 
 		if(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)){
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, null)));
 		}else {
 			if (!StringUtils.isEmpty(id)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null, null, id)));
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, id)));
 			}
 
 			if (!StringUtils.isEmpty(cacheHashCode)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(null,cacheHashCode, null)));
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, cacheHashCode, null)));
 			}
 		}
 

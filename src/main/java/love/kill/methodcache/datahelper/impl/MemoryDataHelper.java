@@ -1,6 +1,7 @@
 package love.kill.methodcache.datahelper.impl;
 
 import love.kill.methodcache.MethodcacheProperties;
+import love.kill.methodcache.SpringApplicationProperties;
 import love.kill.methodcache.datahelper.CacheDataModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
@@ -31,12 +32,19 @@ public class MemoryDataHelper implements DataHelper {
 	private final MethodcacheProperties methodcacheProperties;
 
 	/**
+	 * spring属性
+	 * */
+	private final SpringApplicationProperties springProperties;
+
+
+	/**
 	 * 开启日志
 	 * */
 	private static boolean enableLog = false;
 
-	public MemoryDataHelper(MethodcacheProperties methodcacheProperties) {
+	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties) {
 		this.methodcacheProperties = methodcacheProperties;
+		this.springProperties = springProperties;
 		enableLog = methodcacheProperties.isEnableLog();
 	}
 
