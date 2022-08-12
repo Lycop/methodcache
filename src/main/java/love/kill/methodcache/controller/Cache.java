@@ -23,7 +23,7 @@ public class Cache {
 	private DataHelper dataHelper;
 
 	/**
-	 * 查询所有缓存
+	 * 查询所有缓存数据
 	 *
 	 * @param match  模糊匹配，支持：方法签名、缓存哈希值、缓存ID
 	 * @param select 筛选入参

@@ -370,6 +370,12 @@ public class MemoryDataHelper implements DataHelper {
 		return delCacheMap;
 	}
 
+	@Override
+	public Map<String, Map<String, Object>> getSituation(String match, String select) {
+		// TODO: 2022/8/12
+		return null;
+	}
+
 	/**
 	 * 从内存获取数据
 	 *

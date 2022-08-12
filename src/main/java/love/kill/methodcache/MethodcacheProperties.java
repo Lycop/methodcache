@@ -22,9 +22,14 @@ public class MethodcacheProperties {
 	private boolean enableLog = false;
 
 	/**
-	 * 开启日志
+	 * 开启端点信息
 	 * */
 	private boolean enableEndpoint = false;
+
+	/**
+	 * 开启统计
+	 * */
+	private boolean enableRecord = false;
 
 	/**
 	 * 切面排序值
@@ -65,6 +70,14 @@ public class MethodcacheProperties {
 
 	public void setEnableEndpoint(boolean enableEndpoint) {
 		this.enableEndpoint = enableEndpoint;
+	}
+
+	public boolean isEnableRecord() {
+		return enableRecord;
+	}
+
+	public void setEnableRecord(boolean enableRecord) {
+		this.enableRecord = enableRecord;
 	}
 
 	public int getOrder() {

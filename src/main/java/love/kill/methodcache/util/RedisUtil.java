@@ -104,8 +104,75 @@ public class RedisUtil {
 	}
 
 	/**
+	 * 获取哈希数据
+	 *
+	 * @param key 键
+	 * @param field 字段
+	 * @return 值
+	 */
+	@SuppressWarnings("unchecked")
+	public Object hget(String key, String field) {
+		try {
+			return (key == null || field == null) ? null : redisTemplate.opsForHash().get(key, field);
+		}catch (Exception e){
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	/**
+	 * 保存hash缓存
+	 *
+	 * @param key 键
+	 * @param field 字段
+	 * @param value 值
+	 */
+	@SuppressWarnings("unchecked")
+	public void hset(String key, String field, String value) {
+		try {
+			redisTemplate.opsForHash().put(key, field, value);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * 获取hash所有值
+	 *
+	 * @param key 键
+	 * @return 值
+	 */
+	@SuppressWarnings("unchecked")
+	public List<Object> hValues(String key) {
+		try {
+			return key == null ? null : redisTemplate.opsForHash().values(key);
+		}catch (Exception e){
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	/**
 	 * 加锁
-	 * @param key key值
+	 * @param key 键
+	 * @param block 阻塞方式
+	 * @return 加锁成功
+	 */
+	public boolean lock(String key, boolean block) throws InterruptedException {
+		if(block){
+			while (!lock(key)) {
+				if(Thread.currentThread().isInterrupted()){
+					throw new InterruptedException();
+				}
+			}
+			return true;
+		}
+		return lock(key);
+	}
+
+	/**
+	 * 加锁
+	 * @param key 键
 	 * @return 加锁成功
 	 */
 	public boolean lock(String key) {
@@ -114,7 +181,7 @@ public class RedisUtil {
 
 	/**
 	 * 解锁
-	 * @param key key值
+	 * @param key 键
 	 * @return 解锁成功
 	 */
 	public boolean unlock(String key) {
@@ -123,23 +190,21 @@ public class RedisUtil {
 
 	/**
 	 * 获取锁内容
-	 * @param key
+	 *
+	 * @param key 键
 	 * @return 值
-	 * */
-	private String getLockValue(String key){
-		ConcurrentHashMap<String,String> kvMap  = threadLocal.get();
-		String value = null;
-		if(kvMap == null){
+	 */
+	private String getLockValue(String key) {
+		ConcurrentHashMap<String, String> kvMap = threadLocal.get();
+		if (kvMap == null) {
 			kvMap = new ConcurrentHashMap<>();
-		}else {
-			value = kvMap.get(key);
+			threadLocal.set(kvMap);
 		}
 
-		if(value==null || StringUtils.isEmpty(value)){
-			long threadId = Thread.currentThread().getId();
-			value = UUID.randomUUID().toString() + "_" + String. valueOf(threadId);
-			kvMap.put(key,value);
-			threadLocal.set(kvMap);
+		String value = kvMap.get(key);
+		if (value == null || StringUtils.isEmpty(value)) {
+			value = UUID.randomUUID().toString() + "@" + String.valueOf(Thread.currentThread().getId());
+			kvMap.put(key, value);
 		}
 		return value;
 	}

@@ -15,9 +15,9 @@ import java.util.Map;
  */
 @ConditionalOnProperty(prefix = "methodcache",name = "enable-endpoint" , havingValue = "true")
 @RestController
-@RequestMapping("/methodcache/cache")
-public class Info {
-	@GetMapping("/version")
+@RequestMapping("/methodcache/version")
+public class Version {
+	@GetMapping
 	public Map version(){
 		Map<String,String> versionMap = new HashMap<>();
 		versionMap.put("version","2.0.1");
