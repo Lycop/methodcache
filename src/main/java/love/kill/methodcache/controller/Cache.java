@@ -25,13 +25,12 @@ public class Cache {
 	/**
 	 * 查询所有缓存数据
 	 *
-	 * @param match  模糊匹配，支持：方法签名、缓存哈希值、缓存ID
-	 * @param select 筛选入参
+	 * @param match  模糊匹配，支持：方法签名、缓存ID、缓存哈希值
 	 * @return 所有匹配成功的缓存
 	 */
 	@GetMapping
-	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "select", required = false) String select) {
-		return dataHelper.getCaches(match, select);
+	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match) {
+		return dataHelper.getCaches(match);
 	}
 
 	/**

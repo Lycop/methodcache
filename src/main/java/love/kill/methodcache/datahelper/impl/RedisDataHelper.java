@@ -349,7 +349,7 @@ public class RedisDataHelper implements DataHelper {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public Map<String, Map<String,Object>> getCaches(String match,String select){
+	public Map<String, Map<String,Object>> getCaches(String match){
 
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 
@@ -365,11 +365,9 @@ public class RedisDataHelper implements DataHelper {
 		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
 
 		for (CacheDataModel dataModel : dataModelSet) {
-			if(dataModel == null || dataModel.isExpired()){
-				continue;
+			if(dataModel != null && !dataModel.isExpired()){
+				filterDataModel(cacheMap, dataModel, null);
 			}
-
-			filterDataModel(cacheMap, dataModel, select);
 		}
 
 		return cacheMap;
@@ -460,17 +458,15 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Map<String, Map<String, Object>> getSituation(String match, String select) {
+	public Map<String, Map<String, Object>> getSituation(String match) {
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 
 		Set<CacheSituationModel> situationModelSet = getCacheSituationModel();
 
 		for (CacheSituationModel situationModel : situationModelSet) {
-			if(situationModel == null){
-				continue;
+			if(situationModel != null){
+				filterSituationModel(cacheMap, situationModel, match);
 			}
-
-			filterSituationModel(cacheMap, situationModel,match, select);
 		}
 
 		return cacheMap;
@@ -478,6 +474,7 @@ public class RedisDataHelper implements DataHelper {
 
 	/**
 	 * 获取匹配的数据模型
+	 *
 	 * @param cacheKeys 缓存key
 	 * @return 匹配的数据
 	 * */

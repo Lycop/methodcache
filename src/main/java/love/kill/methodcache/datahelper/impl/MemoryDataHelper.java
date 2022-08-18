@@ -248,7 +248,7 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Map<String, Map<String,Object>> getCaches(String match, String select) {
+	public Map<String, Map<String,Object>> getCaches(String match) {
 
 		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
 
@@ -291,11 +291,9 @@ public class MemoryDataHelper implements DataHelper {
 			}
 
 			for (CacheDataModel dataModel : dataModelSet) {
-				if(dataModel == null || dataModel.isExpired()){
-					continue;
+				if(dataModel != null && !dataModel.isExpired()){
+					filterDataModel(cacheMap, dataModel, null);
 				}
-
-				filterDataModel(cacheMap, dataModel, select);
 			}
 
 		}
@@ -371,7 +369,7 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Map<String, Map<String, Object>> getSituation(String match, String select) {
+	public Map<String, Map<String, Object>> getSituation(String match) {
 		// TODO: 2022/8/12
 		return null;
 	}
