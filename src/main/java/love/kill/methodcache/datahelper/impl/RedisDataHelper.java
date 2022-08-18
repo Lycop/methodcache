@@ -115,7 +115,7 @@ public class RedisDataHelper implements DataHelper {
 
 							if(situationModel == null){
 								situationModel = new CacheSituationModel(situationNode.methodSignature, situationNode.methodSignatureHashCode, situationNode.args,
-										situationNode.argsHashCode, situationNode.cacheHashCode, situationNode.remark, situationNode.id);
+										situationNode.argsHashCode, situationNode.cacheHashCode, situationNode.id, situationNode.remark);
 							}
 
 							int hit = situationModel.getHit();
@@ -730,21 +730,21 @@ public class RedisDataHelper implements DataHelper {
 		String args;
 		int argsHashCode;
 		int cacheHashCode;
-		String remark;
 		String id;
+		String remark;
 		boolean hit;
 		long startTimestamp;
 		long endTimestamp;
 
-		public CacheSituationNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String remark, String id, boolean hit, long startTimestamp, long endTimestamp) {
+		public CacheSituationNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {
 			this.cacheKey = cacheKey;
 			this.methodSignature = methodSignature;
 			this.methodSignatureHashCode = methodSignatureHashCode;
 			this.args = args;
 			this.argsHashCode = argsHashCode;
 			this.cacheHashCode = cacheHashCode;
-			this.remark = remark;
 			this.id = id;
+			this.remark = remark;
 			this.hit = hit;
 			this.startTimestamp = startTimestamp;
 			this.endTimestamp = endTimestamp;

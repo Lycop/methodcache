@@ -16,108 +16,108 @@ public class CacheSituationModel implements Serializable {
 
 	/**
 	 * 方法签名
-	 * */
+	 */
 	private String methodSignature;
 
 	/**
 	 * 方法签名哈希值
-	 * */
+	 */
 	private int methodSignatureHashCode;
 
 	/**
 	 * 入参
-	 * */
+	 */
 	private String args;
 
 	/**
 	 * 入参哈希值
-	 * */
+	 */
 	private int argsHashCode;
 
 	/**
 	 * 缓存哈希值
-	 * */
+	 */
 	private int cacheHashCode;
 
 	/**
 	 * 备注
-	 * */
+	 */
 	private String remark;
 
 	/**
 	 * id
-	 * */
+	 */
 	private String id;
 
 	/**
 	 * 命中次数
-	 * */
+	 */
 	private int hit;
 
 	/**
 	 * 未命中次数
-	 * */
+	 */
 	private int failure;
 
 	/**
 	 * 命中时耗时
-	 * */
+	 */
 	private long hitSpend;
 
 	/**
 	 * 命中时最小耗时
-	 * */
+	 */
 	private long minHitSpend;
 
 	/**
 	 * 命中时最小耗时发生时间(时间戳，毫秒)
-	 * */
+	 */
 	private long timeOfMinHitSpend;
 
 	/**
 	 * 命中时最大耗时
-	 * */
+	 */
 	private long maxHitSpend;
 
 	/**
 	 * 命中时最大耗时发生时间(时间戳，毫秒)
-	 * */
+	 */
 	private long timeOfMaxHitSpend;
 
 	/**
 	 * 未命中时耗时
-	 * */
+	 */
 	private long failureSpend;
 
 	/**
 	 * 未命中时最小耗时
-	 * */
+	 */
 	private long minFailureSpend;
 
 	/**
 	 * 未命中时最小耗时发生时间(时间戳，毫秒)
-	 * */
+	 */
 	private long timeOfMinFailureSpend;
 
 	/**
 	 * 未命中时最大耗时
-	 * */
+	 */
 	private long maxFailureSpend;
 
 	/**
 	 * 未命中时最大耗时发生时间(时间戳，毫秒)
-	 * */
+	 */
 	private long timeOfMaxFailureSpend;
 
 
-	public CacheSituationModel(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String remark, String id) {
+	public CacheSituationModel(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark) {
 		this.methodSignature = methodSignature;
 		this.methodSignatureHashCode = methodSignatureHashCode;
 		this.args = args;
 		this.argsHashCode = argsHashCode;
 		this.cacheHashCode = cacheHashCode;
-		this.remark = remark;
 		this.id = id;
+		this.remark = remark;
 	}
 
 	public static SimpleDateFormat getOutPrintSimpleDateFormat() {
