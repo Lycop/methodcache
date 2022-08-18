@@ -21,11 +21,16 @@ public interface DataHelper {
 
 	/**
 	 * 获取数据
+	 *
 	 * @param method 方法
 	 * @param args 请求参数
 	 * @param refreshData 刷新数据
 	 * @param actualDataFunctional 请求模型
+	 * @param id 缓存ID
+	 * @param remark 缓存备注
+	 * @param nullable 缓存null
 	 * @return 数据
+	 * @throws Exception 获取数据时发生异常
 	 * */
 	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Exception;
 
@@ -36,12 +41,15 @@ public interface DataHelper {
 	interface ActualDataFunctional{
 		/**
 		 * 发起一次真实请求，缓存并返回该数据
+		 *
 		 * @return 请求数据
+		 * @throws Throwable 发起实际请求时发生的异常
 		 * */
 		Object getActualData() throws Throwable;
 
 		/**
 		 * 数据过期时间，时间戳
+		 *
 		 * @return 过期时间
 		 * */
 		long getExpirationTime();
@@ -49,6 +57,7 @@ public interface DataHelper {
 
 	/**
 	 * 格式化时间
+	 *
 	 * @param timeStamp 时间戳
 	 * @return 格式化后的时间
 	 * */
@@ -63,6 +72,7 @@ public interface DataHelper {
 
 	/**
 	 * 获取缓存数据
+	 *
 	 * @param match 匹配规则
 	 * @return key
 	 * */
@@ -81,6 +91,7 @@ public interface DataHelper {
 
 	/**
 	 * 获取缓存情况
+	 *
 	 * @param match 匹配规则
 	 * @return 缓存信息
 	 * */
@@ -92,7 +103,7 @@ public interface DataHelper {
 	 *
 	 * @param cacheMap 缓存数据
 	 * @param cacheDataModel 待筛选的节点
-	 * @return 符合的缓存
+	 * @param select 过滤值
 	 * */
 	@SuppressWarnings("unchecked")
 	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {

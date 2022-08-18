@@ -157,6 +157,7 @@ public class RedisUtil {
 	 * @param key 键
 	 * @param block 阻塞方式
 	 * @return 加锁成功
+	 * @throws InterruptedException 中断信号
 	 */
 	public boolean lock(String key, boolean block) throws InterruptedException {
 		if(block){
