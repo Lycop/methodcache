@@ -1,11 +1,13 @@
 package love.kill.methodcache.datahelper;
 
+import love.kill.methodcache.datahelper.impl.RedisDataHelper;
 import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 数据缓存
@@ -18,6 +20,22 @@ public interface DataHelper {
 
 	SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
+	/**
+	 * cpu个数
+	 */
+	int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+
+	/**
+	 * 执行线程
+	 * */
+	ExecutorService recordExecutorService = new ThreadPoolExecutor(
+			CPU_COUNT + 1, // 核心线程数（CPU核心数 + 1）
+			CPU_COUNT * 2 + 1, // 线程池最大线程数（CPU核心数 * 2 + 1）
+			1,
+			TimeUnit.SECONDS,
+			new LinkedBlockingQueue<>(),
+			Executors.defaultThreadFactory(),
+			new ThreadPoolExecutor.AbortPolicy());
 
 	/**
 	 * 获取数据
@@ -97,6 +115,90 @@ public interface DataHelper {
 	 * */
 	Map<String, Map<String,Object>> getSituation(String match);
 
+	/**
+	 * 缓存概况队列
+	 * */
+	ArrayBlockingQueue<DataHelper.CacheSituationNode> recordSituationInfoQueue = new ArrayBlockingQueue<>(10);
+
+	/**
+	 * 记录缓存情况
+	 *
+	 * @param cacheKey 缓存key
+	 * @param methodSignature 方法签名
+	 * @param methodSignatureHashCode 方法签名哈希
+	 * @param args 入参
+	 * @param argsHashCode 入参哈希
+	 * @param cacheHashCode 缓存哈希
+	 * @param id 缓存ID
+	 * @param remark 缓存备注
+	 * @param hit 命中
+	 * @param startTimestamp 记录开始时间
+	 * */
+	default void record(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
+						int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
+		recordExecutorService.execute(() -> {
+			try {
+				long nowTimestamp = new Date().getTime();
+				recordSituationInfoQueue.put(new RedisDataHelper.CacheSituationNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, startTimestamp, nowTimestamp));
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		});
+	}
+
+	/**
+	 * 获取缓存情况
+	 *
+	 * */
+	default CacheSituationModel getSituation(CacheSituationNode situationNode, CacheSituationModel situationModel) {
+		if (situationModel == null) {
+			situationModel = new CacheSituationModel(situationNode.getMethodSignature(), situationNode.getMethodSignatureHashCode(), situationNode.getArgs(),
+					situationNode.getArgsHashCode(), situationNode.getCacheHashCode(), situationNode.getId(), situationNode.getRemark());
+		}
+
+		int hit = situationModel.getHit();
+		long hitSpend = situationModel.getHitSpend();
+		long minHitSpend = situationModel.getMinHitSpend();
+		long maxHitSpend = situationModel.getMaxHitSpend();
+
+		int failure = situationModel.getFailure();
+		long failureSpend = situationModel.getFailureSpend();
+		long minFailureSpend = situationModel.getMinFailureSpend();
+		long maxFailureSpend = situationModel.getMaxFailureSpend();
+
+		long spend = situationNode.getEndTimestamp() - situationNode.getStartTimestamp(); // 请求耗时
+
+		if (situationNode.isHit()) {
+			situationModel.setHit(hit + 1);
+			situationModel.setHitSpend(hitSpend + spend);
+
+			if (minHitSpend == 0L || minHitSpend > spend) {
+				situationModel.setMinHitSpend(spend);
+				situationModel.setTimeOfMinHitSpend(situationNode.getStartTimestamp());
+			}
+
+			if (maxHitSpend < spend) {
+				situationModel.setMaxHitSpend(spend);
+				situationModel.setTimeOfMaxHitSpend(situationNode.getStartTimestamp());
+			}
+
+		} else {
+			situationModel.setFailure(failure + 1);
+			situationModel.setFailureSpend(failureSpend + spend);
+
+			if (minFailureSpend == 0L || minFailureSpend > spend) {
+				situationModel.setMinFailureSpend(spend);
+				situationModel.setTimeOfMinFailureSpend(situationNode.getStartTimestamp());
+			}
+
+			if (maxFailureSpend < spend) {
+				situationModel.setMaxFailureSpend(spend);
+				situationModel.setTimeOfMaxFailureSpend(situationNode.getStartTimestamp());
+			}
+		}
+
+		return situationModel;
+	}
 
 	/**
 	 * 筛选符合的缓存数据
@@ -309,6 +411,125 @@ public interface DataHelper {
 
 	default String getTimeOfMaxFailureSpend(Map<String, Object> keyMap){
 		return keyMap.get("timeOfMaxFailureSpend") instanceof String ? (String) keyMap.get("timeOfMaxFailureSpend") : "";
+	}
+
+	/**
+	 * 缓存情况
+	 * */
+	class CacheSituationNode {
+		private String cacheKey;
+		private String methodSignature;
+		private int methodSignatureHashCode;
+		private String args;
+		private int argsHashCode;
+		private int cacheHashCode;
+		private String id;
+		private String remark;
+		private boolean hit;
+		private long startTimestamp;
+		private long endTimestamp;
+
+		public CacheSituationNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {
+			this.cacheKey = cacheKey;
+			this.methodSignature = methodSignature;
+			this.methodSignatureHashCode = methodSignatureHashCode;
+			this.args = args;
+			this.argsHashCode = argsHashCode;
+			this.cacheHashCode = cacheHashCode;
+			this.id = id;
+			this.remark = remark;
+			this.hit = hit;
+			this.startTimestamp = startTimestamp;
+			this.endTimestamp = endTimestamp;
+		}
+
+		public String getCacheKey() {
+			return cacheKey;
+		}
+
+		public void setCacheKey(String cacheKey) {
+			this.cacheKey = cacheKey;
+		}
+
+		public String getMethodSignature() {
+			return methodSignature;
+		}
+
+		public void setMethodSignature(String methodSignature) {
+			this.methodSignature = methodSignature;
+		}
+
+		public int getMethodSignatureHashCode() {
+			return methodSignatureHashCode;
+		}
+
+		public void setMethodSignatureHashCode(int methodSignatureHashCode) {
+			this.methodSignatureHashCode = methodSignatureHashCode;
+		}
+
+		public String getArgs() {
+			return args;
+		}
+
+		public void setArgs(String args) {
+			this.args = args;
+		}
+
+		public int getArgsHashCode() {
+			return argsHashCode;
+		}
+
+		public void setArgsHashCode(int argsHashCode) {
+			this.argsHashCode = argsHashCode;
+		}
+
+		public int getCacheHashCode() {
+			return cacheHashCode;
+		}
+
+		public void setCacheHashCode(int cacheHashCode) {
+			this.cacheHashCode = cacheHashCode;
+		}
+
+		public String getId() {
+			return id;
+		}
+
+		public void setId(String id) {
+			this.id = id;
+		}
+
+		public String getRemark() {
+			return remark;
+		}
+
+		public void setRemark(String remark) {
+			this.remark = remark;
+		}
+
+		public boolean isHit() {
+			return hit;
+		}
+
+		public void setHit(boolean hit) {
+			this.hit = hit;
+		}
+
+		public long getStartTimestamp() {
+			return startTimestamp;
+		}
+
+		public void setStartTimestamp(long startTimestamp) {
+			this.startTimestamp = startTimestamp;
+		}
+
+		public long getEndTimestamp() {
+			return endTimestamp;
+		}
+
+		public void setEndTimestamp(long endTimestamp) {
+			this.endTimestamp = endTimestamp;
+		}
 	}
 
 }

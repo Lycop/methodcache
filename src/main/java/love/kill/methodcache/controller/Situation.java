@@ -97,6 +97,12 @@ public class Situation {
 		if(o1.getClass() != o2.getClass() || !(o1 instanceof Comparable)){
 			return -1;
 		}
-		return "0".equals(orderType) ? ((Comparable) o1).compareTo(o2) : ((Comparable) o2).compareTo(o1);
+
+		int c= "0".equals(orderType) ? ((Comparable) o1).compareTo(o2) : ((Comparable) o2).compareTo(o1);
+		if(c == 0){
+			// 相同时不覆盖
+			c = -1;
+		}
+		return c;
 	}
 }
