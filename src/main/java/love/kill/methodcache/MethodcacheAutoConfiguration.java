@@ -5,6 +5,7 @@ import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
+import love.kill.methodcache.util.MemoryMonitor;
 import love.kill.methodcache.util.RedisUtil;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.aop.support.StaticMethodMatcherPointcutAdvisor;
@@ -20,6 +21,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.lang.Nullable;
 
 import java.lang.reflect.Method;
 
@@ -49,9 +51,16 @@ public class MethodcacheAutoConfiguration {
 	}
 
 	@Bean
+	@ConditionalOnClass({MemoryDataHelper.class})
+	@ConditionalOnProperty(prefix = "methodcache",name = "enable-memory-monitor", havingValue = "true", matchIfMissing = true)
+	MemoryMonitor memoryMonitor(MethodcacheProperties methodcacheProperties){
+		return new MemoryMonitor(methodcacheProperties);
+	}
+
+	@Bean
 	@ConditionalOnMissingBean
-	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties){
-		return new MemoryDataHelper(methodcacheProperties, springProperties);
+	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, @Nullable MemoryMonitor memoryMonitor){
+		return new MemoryDataHelper(methodcacheProperties, springProperties, memoryMonitor);
 	}
 
 	@Bean

@@ -6,13 +6,20 @@ import love.kill.methodcache.datahelper.CacheDataModel;
 import love.kill.methodcache.datahelper.CacheSituationModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
+import love.kill.methodcache.util.MemoryMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryUsage;
 import java.lang.reflect.Method;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -48,10 +55,30 @@ public class MemoryDataHelper implements DataHelper {
 	private boolean enableRecord;
 
 	/**
+	 * GC阈值
+	 * */
+	private final double gcThreshold;
+
+	/**
+	 * 内存监控状态
+	 * */
+	private final static Object gcLock = new Object();
+
+	/**
 	 * 缓存数据
 	 * 内容：<方法签名,<缓存哈希值,数据>>
 	 * */
 	private final static Map<String, Map<Integer, CacheDataModel>> cacheData = new ConcurrentHashMap<>();
+
+	/**
+	 * 缓存数据大小
+	 * */
+	private static AtomicLong cacheDataSize = new AtomicLong(0L);
+
+	/**
+	 * 缓存数据个数
+	 * */
+	private static AtomicInteger cacheDataCount = new AtomicInteger(0);
 
 	/**
 	 * 缓存数据过期信息
@@ -75,90 +102,256 @@ public class MemoryDataHelper implements DataHelper {
 	 * */
 	private static ReentrantLock cacheSituationLock = new ReentrantLock();
 
-	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties) {
+
+	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, MemoryMonitor memoryMonitor) {
 		this.methodcacheProperties = methodcacheProperties;
 		this.springProperties = springProperties;
 		this.enableLog = methodcacheProperties.isEnableLog();
 		this.enableRecord = methodcacheProperties.isEnableRecord();
+		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
 
+		/**
+		 * 移除过期数据
+		 * */
+		Runnable removeExpireData = () -> {
+			while (true) {
+				List<Long> expireTimeStampKeyList;
+				try {
+					cacheDataLock.lock();
+					expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet());
+					if (expireTimeStampKeyList.size() <= 0) {
+						// 没有过期信息
+						continue;
+					}
+
+					expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
+					long nowTimeStamp = new Date().getTime();
+					for (long expireTimeStamp : expireTimeStampKeyList) {
+						if (expireTimeStamp > nowTimeStamp) {
+							// 最接近当前时间的数据还没到期
+							break;
+						}
+
+						// 移除过期缓存数据
+						Map<String, Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp);
+						Set<String> methodSignatureSet = methodArgsHashCodeMap.keySet();
+						for (String methodSignature : methodSignatureSet) {
+							Set<Integer> cacheHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
+							for (Integer cacheHashCode : cacheHashCodeSet) {
+								doRemoveData(methodSignature, cacheHashCode);
+							}
+							methodArgsHashCodeMap.remove(methodSignature);
+						}
+						dataExpireInfo.remove(expireTimeStamp);
+					}
+				} finally {
+					cacheDataLock.unlock();
+					try {
+						Thread.sleep(500);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+		};
 		Executors.newSingleThreadExecutor().execute(removeExpireData);
 
 		if(enableRecord){
+			/**
+			 * 记录
+			 * */
+			Runnable recordRunnable = () -> {
+				while (true) {
+					try {
+						CacheSituationNode situationNode = recordSituationInfoQueue.take();
+						String methodSignature = situationNode.getMethodSignature();
+						int cacheHashCode = situationNode.getCacheHashCode();
+
+						try {
+							cacheSituationLock.lock();
+
+							CacheSituationModel situationModel = getSituation(situationNode, getSituationFromMemory(methodSignature, cacheHashCode));
+							setSituationToMemory(situationModel);
+
+						} finally {
+							cacheSituationLock.unlock();
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			};
 			Executors.newSingleThreadExecutor().execute(recordRunnable);
+		}
+
+		if(memoryMonitor != null){
+			// 监听内存状况
+			memoryMonitor.sub(this::gc);
 		}
 	}
 
 	/**
-	 * 移除过期数据
+	 * 内存回收
+	 * @param memUsage 内存使用信息
 	 * */
-	private Runnable removeExpireData = () -> {
-		while (true) {
-			List<Long> expireTimeStampKeyList;
+	private void gc(MemoryUsage memUsage) {
+		if(memUsage == null){
+			memUsage = getMemoryOldGenUsage();
+
+			if(memUsage == null){
+				logger.error("[methodcache]获取内存信息失败");
+				return;
+			}
+		}
+
+		synchronized (gcLock) {
 			try {
 				cacheDataLock.lock();
-				expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet());
-				if (expireTimeStampKeyList.size() <= 0) {
-					// 没有过期信息
-					continue;
+
+				long used = memUsage.getUsed();
+				long max = memUsage.getMax();
+				long cacheDataSize = getCacheDataSize();
+
+				if (!isAlarmed(cacheDataSize, used, gcThreshold)) {
+					logger.info("[methodcache]缓存数据未达到GC阈值，本次不回收。数据大小：" + cacheDataSize + "；内存使用：" + used + "；GC阈值=" + gcThreshold);
+					return;
 				}
 
-				expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
-				long nowTimeStamp = new Date().getTime();
-				for (long expireTimeStamp : expireTimeStampKeyList) {
-					if (expireTimeStamp > nowTimeStamp) {
-						// 最接近当前时间的数据还没到期
-						break;
-					}
+				doGC(cacheDataSize, used, max);
 
-					// 移除过期缓存数据
-					Map<String, Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp); // <方法签名,[缓存哈希值]>
-					Set<String> methodSignatureSet = methodArgsHashCodeMap.keySet();
-					for (String methodSignature : methodSignatureSet) {
-						Set<Integer> cacheHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
-						for (Integer cacheHashCode : cacheHashCodeSet) {
-							doRemoveData(methodSignature, cacheHashCode);
-						}
-						methodArgsHashCodeMap.remove(methodSignature);
-					}
-					dataExpireInfo.remove(expireTimeStamp);
-				}
 			} finally {
 				cacheDataLock.unlock();
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
 			}
 		}
-	};
+	}
 
 	/**
-	 * 记录
-	 * */
-	private Runnable recordRunnable = () -> {
-		while (true){
-			try {
-				CacheSituationNode situationNode = recordSituationInfoQueue.take();
-				String methodSignature = situationNode.getMethodSignature();
-				int cacheHashCode = situationNode.getCacheHashCode();
+	 * 内存回收
+	 *
+	 * @param size 缓存数据大小
+	 * @param used 内存使用大小
+	 * @param max  内存最大上限
+	 */
+	private void doGC(long size, long used, long max) {
+		// 断言本次回收目标
+		long gcCapacity = assertGCCapacity(size, used, max);
+		logger.info("[methodcache]开始GC：数据条数=" + getCacheDataCount() + "，数据大小=" + size + "，计划回收=" + gcCapacity + "(" + (gcCapacity >> 10) + "K)");
+		long startAt = new Date().getTime();
+		RemoveDataModel removeDataModel = removeData(gcCapacity);
+		System.gc();
+		logger.info("[methodcache]GC完成：数据条数=" + getCacheDataCount() + "，数据大小=" + getCacheDataSize() + "，" +
+				"实际回收=" + removeDataModel.getSize() + "(" + (removeDataModel.getSize() >> 10) + "K)，回收条数=" + removeDataModel.getCount() + "，" +
+				"耗时=" + (new Date().getTime() - startAt));
+	}
 
-				try {
-					cacheSituationLock.lock();
 
-					CacheSituationModel situationModel = getSituation(situationNode, getSituationFromMemory(methodSignature, cacheHashCode));
-					setSituationToMemory(situationModel);
-
-				}finally {
-					cacheSituationLock.unlock();
+	/**
+	 * 获取当前内存占用信息
+	 */
+	private MemoryUsage getMemoryOldGenUsage() {
+		List<MemoryPoolMXBean> memPools = ManagementFactory.getMemoryPoolMXBeans();
+		if (memPools != null) {
+			for (MemoryPoolMXBean mp : memPools) {
+				if (mp.getName().toLowerCase().endsWith("old gen")) {
+					return mp.getUsage();
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
 		}
-	};
+		return null;
+	}
 
+	/**
+	 * 获取缓存数据大小
+	 *
+	 * @return 数据大小，单位byte
+	 * */
+	private long getCacheDataSize() {
+		return cacheDataSize.get();
+	}
 
+	/**
+	 * 获取缓存数据条数
+	 *
+	 * @return 数据条数
+	 * */
+	private int getCacheDataCount() {
+		return cacheDataCount.get();
+	}
+
+	/**
+	 * 断言回收数据的大小
+	 * @param size 缓存数据大小
+	 * @param used 内存使用大小
+	 * @param max  内存最大上限
+	 * @return 回收大小
+	 * */
+	private long assertGCCapacity(long size, long used, long max) {
+
+		BigDecimal biSize = new BigDecimal(size);
+		BigDecimal biUsed = new BigDecimal(used);
+		BigDecimal biMax = new BigDecimal(max);
+
+		if(biSize.compareTo(biUsed) >= 0 || biSize.compareTo(biMax.multiply(new BigDecimal(0.5))) >= 0){
+			return biSize.multiply(new BigDecimal(0.3)).longValue();
+		}
+
+		return biSize.multiply(new BigDecimal(0.5)).longValue();
+	}
+
+	/**
+	 * 删除数据
+	 * @param targetCapacity 预期回收大小
+	 * */
+	private RemoveDataModel removeData(long targetCapacity){
+
+		RemoveDataModel removeDataModel = new RemoveDataModel();
+
+		List<Long> expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet()); // 过期时间List
+		if(expireTimeStampKeyList.size() <= 0){
+			// 没有可删除的信息
+			return removeDataModel;
+		}
+
+		// 按时间顺序回收缓存数据
+		long deleteInstanceSize = 0L;
+		expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
+		for (long eachExpireTimeStamp : expireTimeStampKeyList) {
+			Map<String, Set<Integer>> dataExpireInfoMethodSignatureCacheHashCodeMap = dataExpireInfo.get(eachExpireTimeStamp); // (dataExpireInfo)过期时间对应的数据 格式：<方法签名,[缓存哈希值]>
+			for(String dataExpireInfoMethodSignature : dataExpireInfoMethodSignatureCacheHashCodeMap.keySet()){
+				Map<Integer, CacheDataModel> cacheDataCacheHashCodeModelMap = cacheData.get(dataExpireInfoMethodSignature); //  (cacheData) <缓存哈希值,数据>
+				Set<Integer> dataExpireInfoCacheHashCodeSet = dataExpireInfoMethodSignatureCacheHashCodeMap.get(dataExpireInfoMethodSignature); // (dataExpireInfo)[缓存哈希值]
+				Iterator<Integer> dataExpireInfoCacheHashCodeIterator = dataExpireInfoCacheHashCodeSet.iterator();
+				while (dataExpireInfoCacheHashCodeIterator.hasNext()){
+					Integer dataExpireInfoCacheHashCode = dataExpireInfoCacheHashCodeIterator.next();
+					CacheDataModel cacheDataModel = cacheDataCacheHashCodeModelMap.remove(dataExpireInfoCacheHashCode); // (cacheData) 数据
+
+					long instanceSize = cacheDataModel.getInstanceSize();
+					cacheDataSize.addAndGet(-instanceSize);
+					cacheDataCount.decrementAndGet();
+					dataExpireInfoCacheHashCodeIterator.remove();
+
+					removeDataModel.addCount(1);
+					if(removeDataModel.addSize(instanceSize) >= targetCapacity){ // 累加实例大小
+						break;
+					}
+				}
+				if(dataExpireInfoCacheHashCodeSet.isEmpty()){
+					dataExpireInfoMethodSignatureCacheHashCodeMap.remove(dataExpireInfoMethodSignature);
+				}
+
+				if(deleteInstanceSize >= targetCapacity ){ // 满足需要删除的大小
+					break;
+				}
+			}
+			if(dataExpireInfoMethodSignatureCacheHashCodeMap.isEmpty()){
+				dataExpireInfo.remove(eachExpireTimeStamp);
+			}
+			if(deleteInstanceSize >= targetCapacity ){ // 满足需要删除的大小
+				break;
+			}
+		}
+		return removeDataModel;
+	}
 
 
 	@Override
@@ -346,14 +539,10 @@ public class MemoryDataHelper implements DataHelper {
 	public Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode) {
 
 		Map<String, Map<String, Object>> delCacheMap = new HashMap<>();
-
-		Set<Map<Integer, CacheDataModel>> dataModelMapSet = new HashSet<>(cacheData.values()); //缓存数据
-
 		try {
 			cacheDataLock.lock();
-
 			Set<Integer> removeCacheHashCode = new HashSet<>();
-			for (Map<Integer, CacheDataModel> dataModelMap : dataModelMapSet) { // <缓存哈希值,数据>
+			for (Map<Integer, CacheDataModel> dataModelMap : new HashSet<>(cacheData.values())) { // <缓存哈希值,数据>
 				if (dataModelMap.isEmpty()) {
 					continue;
 				}
@@ -510,6 +699,9 @@ public class MemoryDataHelper implements DataHelper {
 			methodArgsHashCodeMap.computeIfAbsent(methodSignature,k->new HashSet<>()).add(cacheHashCode);
 		}
 
+		cacheDataSize.addAndGet(cacheDataModel.getInstanceSize());
+		cacheDataCount.incrementAndGet();
+
 	}
 
 	/**
@@ -547,20 +739,7 @@ public class MemoryDataHelper implements DataHelper {
 		try {
 			CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,cacheHashCode);
 			if(cacheDataModel != null && cacheDataModel.isExpired()){
-
-				log(String.format(  "\n ************* CacheData *************" +
-									"\n ** ------------ 移除缓存 ---------- **" +
-									"\n ** 方法签名：%s" +
-									"\n ** 方法入参：%s" +
-									"\n *************************************",
-						methodSignature,
-						cacheDataModel.getArgs()));
-
-				Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature); // <缓存哈希值,数据>
-				cacheDataModelMap.remove(cacheHashCode);
-				if(cacheDataModelMap.isEmpty()){
-					cacheData.remove(methodSignature);
-				}
+				doRemoveData(cacheDataModel);
 			}
 
 		}catch (Exception e){
@@ -571,9 +750,86 @@ public class MemoryDataHelper implements DataHelper {
 		}
 	}
 
+	/**
+	 * 移除数据
+	 * */
+	private void doRemoveData(CacheDataModel cacheDataModel) {
+		String methodSignature = cacheDataModel.getMethodSignature();
+		int cacheHashCode = cacheDataModel.getCacheHashCode();
+		log(String.format(  "\n ************* CacheData *************" +
+							"\n ** ------------ 移除缓存 ---------- **" +
+							"\n ** 方法签名：%s" +
+							"\n ** 方法入参：%s" +
+							"\n *************************************",
+				methodSignature,
+				cacheDataModel.getArgs()));
+
+		Map<Integer, CacheDataModel> cacheDataModelMap = cacheData.get(methodSignature); // <缓存哈希值,数据>
+		cacheDataSize.addAndGet(-cacheDataModelMap.remove(cacheHashCode).getInstanceSize());
+		cacheDataCount.decrementAndGet();
+		if(cacheDataModelMap.isEmpty()){
+			cacheData.remove(methodSignature);
+		}
+	}
+
+	/**
+	 * 打印日志
+	 *
+	 * @param info 内容
+	 * */
 	private void log(String info){
 		if(enableLog){
 			logger.info(info);
+		}
+	}
+
+	/**
+	 * 是否触发警告
+	 *
+	 *
+	 * @param used 已用内存
+	 * @param limit 上限
+	 * @param cordon 警戒线
+	 * */
+	private boolean isAlarmed(long used, long limit, double cordon) {
+		BigDecimal bigUsed = new BigDecimal(used);
+		BigDecimal bigLimit = new BigDecimal(limit);
+		return bigUsed.compareTo(bigLimit.multiply(new BigDecimal(cordon))) >= 0;
+	}
+
+	/**
+	 * 删除数据模型
+	 * */
+	private class RemoveDataModel{
+		/**
+		 * 数据大小
+		 * */
+		private AtomicLong size;
+
+		/**
+		 * 数据个数
+		 * */
+		private AtomicInteger count;
+
+		RemoveDataModel() {
+			this.size = new AtomicLong(0L);
+			this.count = new AtomicInteger(0);
+		}
+
+		long getSize() {
+			return size.get();
+		}
+
+		int getCount() {
+			return count.get();
+		}
+
+		long addSize(long size) {
+			return this.size.addAndGet(size);
+		}
+
+		int addCount(int count) {
+			return this.count.addAndGet(count);
 		}
 	}
 }

@@ -32,6 +32,23 @@ public class MethodcacheProperties {
 	private boolean enableRecord = false;
 
 	/**
+	 * 开启内存监控
+	 * */
+	private boolean enableMemoryMonitor = true;
+
+	/**
+	 * 内存告警阈值
+	 * 百分比，取值范围：(0, 100)，默认：50(%)
+	 * */
+	private int memoryThreshold = 50;
+
+	/**
+	 * GC阈值
+	 * 百分比，取值范围：(0, 100)，默认：50(%)
+	 * */
+	private int gcThreshold = 50;
+
+	/**
 	 * 切面排序值
 	 *
 	 * 控制 Advisor 的执行顺序
@@ -80,11 +97,49 @@ public class MethodcacheProperties {
 		this.enableRecord = enableRecord;
 	}
 
+	public boolean isEnableMemoryMonitor() {
+		return enableMemoryMonitor;
+	}
+
+	public void setEnableMemoryMonitor(boolean enableMemoryMonitor) {
+		this.enableMemoryMonitor = enableMemoryMonitor;
+	}
+
+	public int getMemoryThreshold() {
+		return memoryThreshold;
+	}
+
+	public void setMemoryThreshold(int memoryThreshold) {
+		this.memoryThreshold = memoryThreshold;
+	}
+
+	public int getGcThreshold() {
+		return gcThreshold;
+	}
+
+	public void setGcThreshold(int gcThreshold) {
+		this.gcThreshold = gcThreshold;
+	}
+
 	public int getOrder() {
 		return order;
 	}
 
 	public void setOrder(int order) {
 		this.order = order;
+	}
+
+	@Override
+	public String toString() {
+		return "MethodcacheProperties{" +
+				"name='" + name + '\'' +
+				", enable=" + enable +
+				", enableLog=" + enableLog +
+				", enableEndpoint=" + enableEndpoint +
+				", enableRecord=" + enableRecord +
+				", enableMemoryMonitor=" + enableMemoryMonitor +
+				", gcThreshold=" + gcThreshold +
+				", order=" + order +
+				'}';
 	}
 }
