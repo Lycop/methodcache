@@ -6,7 +6,7 @@ import love.kill.methodcache.datahelper.CacheDataModel;
 import love.kill.methodcache.datahelper.CacheSituationModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
-import love.kill.methodcache.util.MemoryMonitor;
+import love.kill.methodcache.MemoryMonitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -60,7 +60,7 @@ public class MemoryDataHelper implements DataHelper {
 	private final double gcThreshold;
 
 	/**
-	 * 内存监控状态
+	 * GC锁头
 	 * */
 	private final static Object gcLock = new Object();
 
@@ -291,7 +291,7 @@ public class MemoryDataHelper implements DataHelper {
 		BigDecimal biUsed = new BigDecimal(used);
 		BigDecimal biMax = new BigDecimal(max);
 
-		if(biSize.compareTo(biUsed) >= 0 || biSize.compareTo(biMax.multiply(new BigDecimal(0.5))) >= 0){
+		if(biSize.compareTo(biUsed.multiply(new BigDecimal(0.9))) >= 0 || biSize.compareTo(biMax.multiply(new BigDecimal(0.4))) >= 0){
 			return biSize.multiply(new BigDecimal(0.3)).longValue();
 		}
 
@@ -306,7 +306,7 @@ public class MemoryDataHelper implements DataHelper {
 
 		RemoveDataModel removeDataModel = new RemoveDataModel();
 
-		List<Long> expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet()); // 过期时间List
+		List<Long> expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet());
 		if(expireTimeStampKeyList.size() <= 0){
 			// 没有可删除的信息
 			return removeDataModel;
@@ -316,14 +316,14 @@ public class MemoryDataHelper implements DataHelper {
 		long deleteInstanceSize = 0L;
 		expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
 		for (long eachExpireTimeStamp : expireTimeStampKeyList) {
-			Map<String, Set<Integer>> dataExpireInfoMethodSignatureCacheHashCodeMap = dataExpireInfo.get(eachExpireTimeStamp); // (dataExpireInfo)过期时间对应的数据 格式：<方法签名,[缓存哈希值]>
+			Map<String, Set<Integer>> dataExpireInfoMethodSignatureCacheHashCodeMap = dataExpireInfo.get(eachExpireTimeStamp);
 			for(String dataExpireInfoMethodSignature : dataExpireInfoMethodSignatureCacheHashCodeMap.keySet()){
-				Map<Integer, CacheDataModel> cacheDataCacheHashCodeModelMap = cacheData.get(dataExpireInfoMethodSignature); //  (cacheData) <缓存哈希值,数据>
-				Set<Integer> dataExpireInfoCacheHashCodeSet = dataExpireInfoMethodSignatureCacheHashCodeMap.get(dataExpireInfoMethodSignature); // (dataExpireInfo)[缓存哈希值]
+				Map<Integer, CacheDataModel> cacheDataCacheHashCodeModelMap = cacheData.get(dataExpireInfoMethodSignature);
+				Set<Integer> dataExpireInfoCacheHashCodeSet = dataExpireInfoMethodSignatureCacheHashCodeMap.get(dataExpireInfoMethodSignature);
 				Iterator<Integer> dataExpireInfoCacheHashCodeIterator = dataExpireInfoCacheHashCodeSet.iterator();
 				while (dataExpireInfoCacheHashCodeIterator.hasNext()){
 					Integer dataExpireInfoCacheHashCode = dataExpireInfoCacheHashCodeIterator.next();
-					CacheDataModel cacheDataModel = cacheDataCacheHashCodeModelMap.remove(dataExpireInfoCacheHashCode); // (cacheData) 数据
+					CacheDataModel cacheDataModel = cacheDataCacheHashCodeModelMap.remove(dataExpireInfoCacheHashCode);
 
 					long instanceSize = cacheDataModel.getInstanceSize();
 					cacheDataSize.addAndGet(-instanceSize);
@@ -339,14 +339,14 @@ public class MemoryDataHelper implements DataHelper {
 					dataExpireInfoMethodSignatureCacheHashCodeMap.remove(dataExpireInfoMethodSignature);
 				}
 
-				if(deleteInstanceSize >= targetCapacity ){ // 满足需要删除的大小
+				if(deleteInstanceSize >= targetCapacity ){
 					break;
 				}
 			}
 			if(dataExpireInfoMethodSignatureCacheHashCodeMap.isEmpty()){
 				dataExpireInfo.remove(eachExpireTimeStamp);
 			}
-			if(deleteInstanceSize >= targetCapacity ){ // 满足需要删除的大小
+			if(deleteInstanceSize >= targetCapacity ){
 				break;
 			}
 		}

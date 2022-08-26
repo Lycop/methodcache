@@ -5,7 +5,6 @@ import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
-import love.kill.methodcache.util.MemoryMonitor;
 import love.kill.methodcache.util.RedisUtil;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.aop.support.StaticMethodMatcherPointcutAdvisor;

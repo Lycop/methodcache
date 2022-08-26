@@ -1,6 +1,6 @@
-package love.kill.methodcache.util;
+package love.kill.methodcache;
 
-import love.kill.methodcache.MethodcacheProperties;
+import love.kill.methodcache.util.ThreadPoolBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +56,7 @@ public class MemoryMonitor {
 		logger.info("成功开启内存监控...");
 		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
 		this.memoryThreshold = new BigDecimal(methodcacheProperties.getMemoryThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
-		logger.info("内存告警阈值： " + memoryThreshold + "；GC阈值：" + gcThreshold);
+		logger.info("内存告警阈值=" + memoryThreshold + "，GC阈值=" + gcThreshold);
 		setUsageThreshold();
 		NotificationEmitter ne = (NotificationEmitter) memBean;
 		ne.addNotificationListener((notification, handback) -> {
