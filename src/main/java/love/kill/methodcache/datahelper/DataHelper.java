@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 /**
  * 数据缓存
  *
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

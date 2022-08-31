@@ -26,7 +26,7 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * 内存缓存
  *
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

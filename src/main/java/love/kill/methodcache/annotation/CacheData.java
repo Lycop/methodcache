@@ -8,7 +8,7 @@ import java.lang.annotation.*;
  *
  * 被注解的方法，会根据请求参数(hashcode)进行匹配，匹配成功返回缓存数据
  *
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

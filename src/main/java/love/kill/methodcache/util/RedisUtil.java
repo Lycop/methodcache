@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

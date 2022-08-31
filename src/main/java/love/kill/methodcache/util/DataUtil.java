@@ -4,7 +4,7 @@ import java.lang.reflect.Field;
 import java.util.*;
 
 /**
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

@@ -3,7 +3,7 @@ package love.kill.methodcache.util;
 /**
  * 线程池构建
  *
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */

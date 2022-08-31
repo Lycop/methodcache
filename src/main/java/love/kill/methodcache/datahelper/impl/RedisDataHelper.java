@@ -18,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * @author likepan
+ * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */
