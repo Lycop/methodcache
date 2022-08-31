@@ -3,7 +3,7 @@ package love.kill.methodcache.datahelper.impl;
 import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.SpringApplicationProperties;
 import love.kill.methodcache.datahelper.CacheDataModel;
-import love.kill.methodcache.datahelper.CacheSituationModel;
+import love.kill.methodcache.datahelper.CacheStatisticsModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.util.RedisUtil;
@@ -31,21 +31,6 @@ public class RedisDataHelper implements DataHelper {
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_";
 
 	/**
-	 * 缓存key
-	 * */
-	private final static  String METHOD_CACHE_DATA = "METHOD_CACHE_DATA";
-
-	/**
-	 * 缓存概况key
-	 * */
-	private final static  String METHOD_CACHE_SITUATION = "METHOD_CACHE_SITUATION";
-
-	/**
-	 * 签名和入参的分隔符
-	 * */
-	private final static  String KEY_SEPARATION_CHARACTER = "@";
-
-	/**
 	 * cpu个数
 	 */
 	private final static int CPU_COUNT = Runtime.getRuntime().availableProcessors();
@@ -70,68 +55,49 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * spring属性
 	 * */
-	private final SpringApplicationProperties applicationProperties;
+	private final SpringApplicationProperties springApplicationProperties;
 
 	/**
 	 * redis工具类
 	 * */
 	private RedisUtil redisUtil;
 
-	/**
-	 * 输出缓存日志
-	 * */
-	private boolean enableLog;
 
-	/**
-	 * 开启记录
-	 * */
-	private boolean enableRecord;
-
-
-	public RedisDataHelper(RedisUtil redisUtil, MethodcacheProperties methodcacheProperties, SpringApplicationProperties applicationProperties) {
+	public RedisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties, RedisUtil redisUtil) {
 		this.redisUtil = redisUtil;
 		this.methodcacheProperties = methodcacheProperties;
-		this.applicationProperties = applicationProperties;
-		this.enableLog = methodcacheProperties.isEnableLog();
-		this.enableRecord = methodcacheProperties.isEnableRecord();
+		this.springApplicationProperties = springApplicationProperties;
 
-		if(enableRecord){
-			Executors.newSingleThreadExecutor().execute(recordRunnable);
+		if (methodcacheProperties.isEnableStatistics()) {
+			Executors.newSingleThreadExecutor().execute(() -> {
+				while (true) {
+					try {
+						CacheStatisticsNode statisticsNode = cacheStatisticsInfoQueue.take();
+						String cacheKey = statisticsNode.getCacheKey();
+
+						String statisticsLockKey = getIntactCacheStatisticsLockKey(cacheKey);
+						try {
+							redisUtil.lock(statisticsLockKey, true);
+							String methodSignature = statisticsNode.getMethodSignature();
+							CacheStatisticsModel statisticsModel = increaseStatistics(getCacheStatistics(methodSignature), statisticsNode);
+							setCacheStatistics(methodSignature, statisticsModel);
+						} finally {
+							redisUtil.unlock(statisticsLockKey);
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			});
 		}
 	}
-
-	/**
-	 * 记录
-	 * */
-	private Runnable recordRunnable = () -> {
-		while (true){
-			try {
-				CacheSituationNode situationNode = recordSituationInfoQueue.take();
-				String cacheKey = situationNode.getCacheKey();
-
-				String redisSituationLockKey = getIntactSituationKey(cacheKey);
-				try {
-					redisUtil.lock(redisSituationLockKey, true);
-
-					CacheSituationModel situationModel = getSituation(situationNode, getSituationFromRedis(cacheKey));
-
-					setSituationToRedis(cacheKey, situationModel);
-
-				}finally {
-					redisUtil.unlock(redisSituationLockKey);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	};
 
 	@Override
 	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable){
 
 		String applicationName; // 应用名
-		if(StringUtils.isEmpty(applicationName = methodcacheProperties.getName())){
-			applicationName = applicationProperties.getName();
+		if (StringUtils.isEmpty(applicationName = methodcacheProperties.getName())) {
+			applicationName = springApplicationProperties.getName();
 		}
 
 		String methodSignature = method.toGenericString(); // 方法签名
@@ -139,13 +105,13 @@ public class RedisDataHelper implements DataHelper {
 		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
 		String argsInfo = Arrays.toString(args); // 入参信息
 		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)); // 缓存哈希
-		if(StringUtils.isEmpty(id)){
-			id = String.valueOf( methodSignature.hashCode());
+		if (StringUtils.isEmpty(id)) {
+			id = String.valueOf(methodSignature.hashCode());
 		}
-		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id);
+		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id); // 缓存key
 		String redisDataLockKey = getIntactDataLockKey(cacheKey);
 		long startTime = new Date().getTime();
-		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey,false);
+		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false);
 		boolean hit = (cacheDataModel != null);
 
 		log(String.format(  "\n ************* CacheData *************" +
@@ -207,7 +173,7 @@ public class RedisDataHelper implements DataHelper {
 
 						setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
 					}
-					if (enableRecord) {
+					if (methodcacheProperties.isEnableStatistics()) {
 						record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 					}
 					return data;
@@ -228,28 +194,108 @@ public class RedisDataHelper implements DataHelper {
 			// 刷新数据
 			refreshData(redisDataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
 		}
-		if (enableRecord) {
+		if (methodcacheProperties.isEnableStatistics()) {
 			record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 		}
 		return cacheDataModel.getData();
 	}
 
-	/**
-	 * 获取缓存key
-	 * @param applicationName 应用名
-	 * @param methodSignature 方法签名
-	 * @param cacheHashCode 缓存签名
-	 * @param id 缓存ID
-	 * @return 缓存key
-	 * */
-	private static String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		if(StringUtils.isEmpty(applicationName)){
-			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Map<String, Map<String,Object>> getCaches(String match){
+
+		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
+
+		Set<String> cacheKeys = new HashSet<>();
+		if(StringUtils.isEmpty(match)){
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, null)));
 		}else {
-			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), match, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, match, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, match)));
 		}
+
+		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
+
+		for (CacheDataModel dataModel : dataModelSet) {
+			if(dataModel != null && !dataModel.isExpired()){
+				filterDataModel(cacheMap, dataModel, null);
+			}
+		}
+
+		return cacheMap;
 	}
 
+	@SuppressWarnings("unchecked")
+	@Override
+	public Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode) {
+
+		Map<String, Map<String, Object>> delCacheMap = new HashMap<>();
+
+		Set<String> cacheKeys = new HashSet<>();
+
+		if(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)){
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, null)));
+		}else {
+			if (!StringUtils.isEmpty(id)) {
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, id)));
+			}
+
+			if (!StringUtils.isEmpty(cacheHashCode)) {
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, cacheHashCode, null)));
+			}
+		}
+
+		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
+		for (CacheDataModel dataModel : dataModelSet) {
+			if (dataModel == null || dataModel.isExpired()) {
+				continue;
+			}
+
+			String methodSignature = dataModel.getMethodSignature();
+			int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
+			String argsHashCode = String.valueOf(dataModel.getArgsHashCode());
+			String cacheDataId = dataModel.getId();
+			String cacheKey = methodSignature + KEY_SEPARATION_CHARACTER + DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)) + KEY_SEPARATION_CHARACTER + cacheDataId;
+			String redisDataLockKey = getIntactDataLockKey(cacheKey);
+			try {
+				redisUtil.lock(redisDataLockKey);
+				if(!dataModel.isExpired()){
+					filterDataModel(delCacheMap, dataModel, "");
+					dataModel.expired();
+					deleteDataFromRedis(cacheKey);
+				}
+			} catch (Throwable throwable) {
+				throwable.printStackTrace();
+			} finally {
+				redisUtil.unlock(redisDataLockKey);
+			}
+		}
+		return delCacheMap;
+	}
+
+	@Override
+	public Map<String, CacheStatisticsModel> getCacheStatistics() {
+		return getStatisticsFromRedis();
+	}
+
+	@Override
+	public CacheStatisticsModel getCacheStatistics(String methodSignature) {
+		Map<String, CacheStatisticsModel> statisticsFromRedis = getStatisticsFromRedis();
+		if(statisticsFromRedis == null){
+			return null;
+		}
+		return statisticsFromRedis.get(methodSignature);
+	}
+
+	@Override
+	public void setCacheStatistics(String methodSignature, CacheStatisticsModel cacheStatisticsModel) {
+		setStatisticsToRedis(methodSignature,cacheStatisticsModel);
+	}
+
+	/****************************************************************** 私有方法 start ******************************************************************/
 
 	/**
 	 * 刷新数据
@@ -300,32 +346,6 @@ public class RedisDataHelper implements DataHelper {
 		});
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Map<String, Map<String,Object>> getCaches(String match){
-
-		Map<String, Map<String,Object>> cacheMap = new HashMap<>();
-
-		Set<String> cacheKeys = new HashSet<>();
-		if(StringUtils.isEmpty(match)){
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, null)));
-		}else {
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), match, null, null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, match, null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, match)));
-		}
-
-		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
-
-		for (CacheDataModel dataModel : dataModelSet) {
-			if(dataModel != null && !dataModel.isExpired()){
-				filterDataModel(cacheMap, dataModel, null);
-			}
-		}
-
-		return cacheMap;
-	}
-
 	/**
 	 * 构建缓存key规则
 	 *
@@ -362,72 +382,8 @@ public class RedisDataHelper implements DataHelper {
 		return cacheKeyPattern;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode) {
-
-		Map<String, Map<String, Object>> delCacheMap = new HashMap<>();
-
-		Set<String> cacheKeys = new HashSet<>();
-
-		if(StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)){
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, null)));
-		}else {
-			if (!StringUtils.isEmpty(id)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, null, id)));
-			}
-
-			if (!StringUtils.isEmpty(cacheHashCode)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationProperties.getName(), null, cacheHashCode, null)));
-			}
-		}
-
-		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
-		for (CacheDataModel dataModel : dataModelSet) {
-			if (dataModel == null || dataModel.isExpired()) {
-				continue;
-			}
-
-			String methodSignature = dataModel.getMethodSignature();
-			int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
-			String argsHashCode = String.valueOf(dataModel.getArgsHashCode());
-			String cacheDataId = dataModel.getId();
-			String cacheKey = methodSignature + KEY_SEPARATION_CHARACTER + DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)) + KEY_SEPARATION_CHARACTER + cacheDataId;
-			String redisDataLockKey = getIntactDataLockKey(cacheKey);
-			try {
-				redisUtil.lock(redisDataLockKey);
-				if(!dataModel.isExpired()){
-					filterDataModel(delCacheMap, dataModel, "");
-					dataModel.expired();
-					deleteDataFromRedis(cacheKey);
-				}
-			} catch (Throwable throwable) {
-				throwable.printStackTrace();
-			} finally {
-				redisUtil.unlock(redisDataLockKey);
-			}
-		}
-		return delCacheMap;
-	}
-
-	@Override
-	public Map<String, Map<String, Object>> getSituation(String match) {
-		Map<String, Map<String,Object>> situationMap = new HashMap<>();
-
-		Set<CacheSituationModel> situationModelSet = getCacheSituationModel();
-
-		for (CacheSituationModel situationModel : situationModelSet) {
-			if(situationModel != null){
-				filterSituationModel(situationMap, situationModel, match);
-			}
-		}
-
-		return situationMap;
-	}
-
-
 	/**
-	 * 从 Redis 获取数据
+	 * 从Redis获取数据
 	 *
 	 * @param cacheKey 缓存key
 	 * @param intactKeyFlag 完整key标识
@@ -482,47 +438,29 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 获取匹配的缓存情况
-	 * @return 缓存情况数
+	 * 获取缓存统计
+	 *
+	 * @return 缓存统计信息
 	 * */
 	@SuppressWarnings("unchecked")
-	private Set<CacheSituationModel> getCacheSituationModel(){
-
-		Set<CacheSituationModel> situationModelSet = new HashSet<>();
-
-		List<Object> objects = redisUtil.hValues(METHOD_CACHE_SITUATION);
+	private Map<String, CacheStatisticsModel> getStatisticsFromRedis(){
+		Map<String, CacheStatisticsModel> resultMap = new HashMap<>();
+		List<Object> objects = redisUtil.hValues(METHOD_CACHE_STATISTICS);
 		if(objects == null){
-			return situationModelSet;
+			return null;
 		}
 
 		for(Object object : objects){
 			if(object instanceof String){
 				Object model = SerializeUtil.deserialize(string2ByteArray((String) object));
-				if(model instanceof CacheSituationModel){
-					situationModelSet.add((CacheSituationModel)model);
+				if(model instanceof CacheStatisticsModel){
+					CacheStatisticsModel statisticsModel = (CacheStatisticsModel)model;
+					resultMap.put(statisticsModel.getMethodSignature(), statisticsModel);
 				}
 			}
 		}
 
-
-		return situationModelSet;
-	}
-
-	/**
-	 * 从Redis获取缓存情况
-	 *
-	 * @param cacheKey 缓存key
-	 * @result 缓存情况
-	 * */
-	private CacheSituationModel getSituationFromRedis(String cacheKey) {
-		Object objectByteString = redisUtil.hget(METHOD_CACHE_SITUATION, getIntactCacheSituationKey(cacheKey));
-		if(objectByteString instanceof String){
-			Object model = SerializeUtil.deserialize(string2ByteArray((String) objectByteString));
-			if(model instanceof CacheSituationModel){
-				return (CacheSituationModel)model;
-			}
-		}
-		return null;
+		return resultMap;
 	}
 
 	/**
@@ -566,19 +504,39 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
+	 * 获取完整的数据锁key
+	 * */
+	private static String getIntactDataLockKey(String key){
+		return REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + KEY_SEPARATION_CHARACTER + key;
+	}
+
+	/**
+	 * 获取缓存数据key
+	 * */
+	private static String getIntactCacheDataKey(String key){
+		return METHOD_CACHE_DATA + KEY_SEPARATION_CHARACTER + key;
+	}
+
+	/**
+	 * 获取完整的数据锁key
+	 * */
+	private static String getIntactCacheStatisticsLockKey(String key){
+		return REDIS_LOCK_PREFIX + METHOD_CACHE_STATISTICS + KEY_SEPARATION_CHARACTER + key;
+	}
+
+	/**
+	 * 获取缓存情况key
+	 * */
+	private static String getIntactStatisticsKey(String key){
+		return METHOD_CACHE_STATISTICS + KEY_SEPARATION_CHARACTER + key;
+	}
+
+	/**
 	 * 保存数据至Redis
 	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToRedis(String cacheKey, CacheDataModel cacheDataModel, long timeout) {
 		redisUtil.set(getIntactCacheDataKey(cacheKey), byteArray2String(SerializeUtil.serizlize(cacheDataModel)), timeout);
-	}
-
-	/**
-	 * 保存缓存情况至Redis
-	 * 这里会对返回值进行反序列化
-	 * */
-	private void setSituationToRedis(String cacheKey, CacheSituationModel cacheSituationModel) {
-		redisUtil.hset(METHOD_CACHE_SITUATION, getIntactCacheSituationKey(cacheKey), byteArray2String(SerializeUtil.serizlize(cacheSituationModel)));
 	}
 
 	/**
@@ -590,31 +548,15 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 获取完整的数据锁key
+	 * 保存缓存统计信息至Redis
+	 *
+	 * Redis缓存信息模型(hash)
+	 * "METHOD_CACHE_STATISTICS":{
+	 *     方法签名:(序列化后的)统计信息
+	 * }
 	 * */
-	private static String getIntactDataLockKey(String key){
-		return REDIS_LOCK_PREFIX + METHOD_CACHE_DATA + KEY_SEPARATION_CHARACTER + key;
-	}
-
-	/**
-	 * 获取完整的数据锁key
-	 * */
-	private static String getIntactSituationKey(String key){
-		return REDIS_LOCK_PREFIX + METHOD_CACHE_SITUATION + KEY_SEPARATION_CHARACTER + key;
-	}
-
-	/**
-	 * 获取缓存数据key
-	 * */
-	private static String getIntactCacheDataKey(String key){
-		return METHOD_CACHE_DATA + KEY_SEPARATION_CHARACTER + key;
-	}
-
-	/**
-	 * 获取缓存情况key
-	 * */
-	private static String getIntactCacheSituationKey(String key){
-		return METHOD_CACHE_SITUATION + KEY_SEPARATION_CHARACTER + key;
+	private void setStatisticsToRedis(String methodSignature, CacheStatisticsModel cacheStatisticsModel) {
+		redisUtil.hset(METHOD_CACHE_STATISTICS, methodSignature, byteArray2String(SerializeUtil.serizlize(cacheStatisticsModel)));
 	}
 
 	/**
@@ -635,8 +577,10 @@ public class RedisDataHelper implements DataHelper {
 	 * 日志记录
 	 * */
 	private void log(String info){
-		if(enableLog){
+		if(methodcacheProperties.isEnableLog()){
 			logger.info(info);
 		}
 	}
+
+	/****************************************************************** 私有方法  end  ******************************************************************/
 }

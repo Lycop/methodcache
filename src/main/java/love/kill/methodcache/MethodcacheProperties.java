@@ -29,7 +29,7 @@ public class MethodcacheProperties {
 	/**
 	 * 开启统计
 	 * */
-	private boolean enableRecord = false;
+	private boolean enableStatistics = false;
 
 	/**
 	 * 开启内存监控
@@ -89,12 +89,12 @@ public class MethodcacheProperties {
 		this.enableEndpoint = enableEndpoint;
 	}
 
-	public boolean isEnableRecord() {
-		return enableRecord;
+	public boolean isEnableStatistics() {
+		return enableStatistics;
 	}
 
-	public void setEnableRecord(boolean enableRecord) {
-		this.enableRecord = enableRecord;
+	public void setEnableStatistics(boolean enableStatistics) {
+		this.enableStatistics = enableStatistics;
 	}
 
 	public boolean isEnableMemoryMonitor() {
@@ -136,8 +136,9 @@ public class MethodcacheProperties {
 				", enable=" + enable +
 				", enableLog=" + enableLog +
 				", enableEndpoint=" + enableEndpoint +
-				", enableRecord=" + enableRecord +
+				", enableStatistics=" + enableStatistics +
 				", enableMemoryMonitor=" + enableMemoryMonitor +
+				", memoryThreshold=" + memoryThreshold +
 				", gcThreshold=" + gcThreshold +
 				", order=" + order +
 				'}';

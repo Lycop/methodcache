@@ -1,9 +1,10 @@
 package love.kill.methodcache.datahelper.impl;
 
 import love.kill.methodcache.MethodcacheProperties;
+
 import love.kill.methodcache.SpringApplicationProperties;
 import love.kill.methodcache.datahelper.CacheDataModel;
-import love.kill.methodcache.datahelper.CacheSituationModel;
+import love.kill.methodcache.datahelper.CacheStatisticsModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.MemoryMonitor;
@@ -35,50 +36,10 @@ public class MemoryDataHelper implements DataHelper {
 	private static final ExecutorService executorService = Executors.newFixedThreadPool(10);
 
 	/**
-	 * 属性配置
-	 * */
-	private final MethodcacheProperties methodcacheProperties;
-
-	/**
-	 * spring属性
-	 * */
-	private final SpringApplicationProperties springProperties;
-
-	/**
-	 * 输出缓存日志
-	 * */
-	private boolean enableLog;
-
-	/**
-	 * 开启记录
-	 * */
-	private boolean enableRecord;
-
-	/**
-	 * GC阈值
-	 * */
-	private final double gcThreshold;
-
-	/**
-	 * GC锁头
-	 * */
-	private final static Object gcLock = new Object();
-
-	/**
 	 * 缓存数据
 	 * 内容：<方法签名,<缓存哈希值,数据>>
 	 * */
 	private final static Map<String, Map<Integer, CacheDataModel>> cacheData = new ConcurrentHashMap<>();
-
-	/**
-	 * 缓存数据大小
-	 * */
-	private static AtomicLong cacheDataSize = new AtomicLong(0L);
-
-	/**
-	 * 缓存数据个数
-	 * */
-	private static AtomicInteger cacheDataCount = new AtomicInteger(0);
 
 	/**
 	 * 缓存数据过期信息
@@ -87,10 +48,20 @@ public class MemoryDataHelper implements DataHelper {
 	private final static Map<Long, Map<String,Set<Integer>>> dataExpireInfo = new ConcurrentHashMap<>();
 
 	/**
-	 * 缓存情况
-	 * 内容：<方法签名,<缓存哈希值, 缓存情况>>
+	 * 缓存统计
+	 * 内容：<方法签名, 缓存情况>
 	 * */
-	private final static Map<String, Map<Integer, CacheSituationModel>> cacheSituation = new ConcurrentHashMap<>();
+	private final static Map<String, CacheStatisticsModel> cacheStatistics = new ConcurrentHashMap<>();
+
+	/**
+	 * 配置属性
+	 * */
+	private final MethodcacheProperties methodcacheProperties;
+
+	/**
+	 * spring属性
+	 * */
+	private final SpringApplicationProperties springApplicationProperties;
 
 	/**
 	 * 缓存数据锁
@@ -98,22 +69,30 @@ public class MemoryDataHelper implements DataHelper {
 	private static ReentrantLock cacheDataLock = new ReentrantLock();
 
 	/**
-	 * 缓存数据锁
+	 * 缓存数据总大小
 	 * */
-	private static ReentrantLock cacheSituationLock = new ReentrantLock();
+	private static AtomicLong cacheDataSize = new AtomicLong(0L);
+
+	/**
+	 * 缓存数据总个数
+	 * */
+	private static AtomicInteger cacheDataCount = new AtomicInteger(0);
 
 
-	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, MemoryMonitor memoryMonitor) {
+	/**
+	 * GC阈值
+	 * */
+	private final double gcThreshold;
+
+	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties, MemoryMonitor memoryMonitor) {
 		this.methodcacheProperties = methodcacheProperties;
-		this.springProperties = springProperties;
-		this.enableLog = methodcacheProperties.isEnableLog();
-		this.enableRecord = methodcacheProperties.isEnableRecord();
+		this.springApplicationProperties = springApplicationProperties;
 		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
 
 		/**
 		 * 移除过期数据
 		 * */
-		Runnable removeExpireData = () -> {
+		Executors.newSingleThreadExecutor().execute(() -> {
 			while (true) {
 				List<Long> expireTimeStampKeyList;
 				try {
@@ -153,35 +132,24 @@ public class MemoryDataHelper implements DataHelper {
 					}
 				}
 			}
-		};
-		Executors.newSingleThreadExecutor().execute(removeExpireData);
+		});
 
-		if(enableRecord){
-			/**
-			 * 记录
-			 * */
-			Runnable recordRunnable = () -> {
+		if (methodcacheProperties.isEnableStatistics()) {
+			// 统计
+			Executors.newSingleThreadExecutor().execute(() -> {
 				while (true) {
 					try {
-						CacheSituationNode situationNode = recordSituationInfoQueue.take();
-						String methodSignature = situationNode.getMethodSignature();
-						int cacheHashCode = situationNode.getCacheHashCode();
-
-						try {
-							cacheSituationLock.lock();
-
-							CacheSituationModel situationModel = getSituation(situationNode, getSituationFromMemory(methodSignature, cacheHashCode));
-							setSituationToMemory(situationModel);
-
-						} finally {
-							cacheSituationLock.unlock();
+						CacheStatisticsNode statisticsNode = cacheStatisticsInfoQueue.take();
+						synchronized (cacheStatistics) {
+							String methodSignature = statisticsNode.getMethodSignature();
+							CacheStatisticsModel statisticsModel = increaseStatistics(getCacheStatistics(methodSignature), statisticsNode);
+							setCacheStatistics(methodSignature, statisticsModel);
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
-			};
-			Executors.newSingleThreadExecutor().execute(recordRunnable);
+			});
 		}
 
 		if(memoryMonitor != null){
@@ -190,121 +158,14 @@ public class MemoryDataHelper implements DataHelper {
 		}
 	}
 
-	/**
-	 * 内存回收
-	 * @param memUsage 内存使用信息
-	 * */
-	private void gc(MemoryUsage memUsage) {
-		if(memUsage == null){
-			memUsage = getMemoryOldGenUsage();
-
-			if(memUsage == null){
-				logger.error("[methodcache]获取内存信息失败");
-				return;
-			}
-		}
-
-		synchronized (gcLock) {
-			try {
-				cacheDataLock.lock();
-
-				long used = memUsage.getUsed();
-				long max = memUsage.getMax();
-				long cacheDataSize = getCacheDataSize();
-
-				if (!isAlarmed(cacheDataSize, used, gcThreshold)) {
-					logger.info("[methodcache]缓存数据未达到GC阈值，本次不回收。数据大小：" + cacheDataSize + "；内存使用：" + used + "；GC阈值=" + gcThreshold);
-					return;
-				}
-
-				doGC(cacheDataSize, used, max);
-
-			} finally {
-				cacheDataLock.unlock();
-			}
-		}
-	}
-
-	/**
-	 * 内存回收
-	 *
-	 * @param size 缓存数据大小
-	 * @param used 内存使用大小
-	 * @param max  内存最大上限
-	 */
-	private void doGC(long size, long used, long max) {
-		// 断言本次回收目标
-		long gcCapacity = assertGCCapacity(size, used, max);
-		logger.info("[methodcache]开始GC：数据条数=" + getCacheDataCount() + "，数据大小=" + size + "，计划回收=" + gcCapacity + "(" + (gcCapacity >> 10) + "K)");
-		long startAt = new Date().getTime();
-		RemoveDataModel removeDataModel = removeData(gcCapacity);
-		System.gc();
-		logger.info("[methodcache]GC完成：数据条数=" + getCacheDataCount() + "，数据大小=" + getCacheDataSize() + "，" +
-				"实际回收=" + removeDataModel.getSize() + "(" + (removeDataModel.getSize() >> 10) + "K)，回收条数=" + removeDataModel.getCount() + "，" +
-				"耗时=" + (new Date().getTime() - startAt));
-	}
-
-
-	/**
-	 * 获取当前内存占用信息
-	 */
-	private MemoryUsage getMemoryOldGenUsage() {
-		List<MemoryPoolMXBean> memPools = ManagementFactory.getMemoryPoolMXBeans();
-		if (memPools != null) {
-			for (MemoryPoolMXBean mp : memPools) {
-				if (mp.getName().toLowerCase().endsWith("old gen")) {
-					return mp.getUsage();
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * 获取缓存数据大小
-	 *
-	 * @return 数据大小，单位byte
-	 * */
-	private long getCacheDataSize() {
-		return cacheDataSize.get();
-	}
-
-	/**
-	 * 获取缓存数据条数
-	 *
-	 * @return 数据条数
-	 * */
-	private int getCacheDataCount() {
-		return cacheDataCount.get();
-	}
-
-	/**
-	 * 断言回收数据的大小
-	 * @param size 缓存数据大小
-	 * @param used 内存使用大小
-	 * @param max  内存最大上限
-	 * @return 回收大小
-	 * */
-	private long assertGCCapacity(long size, long used, long max) {
-
-		BigDecimal biSize = new BigDecimal(size);
-		BigDecimal biUsed = new BigDecimal(used);
-		BigDecimal biMax = new BigDecimal(max);
-
-		if(biSize.compareTo(biUsed.multiply(new BigDecimal(0.9))) >= 0 || biSize.compareTo(biMax.multiply(new BigDecimal(0.4))) >= 0){
-			return biSize.multiply(new BigDecimal(0.3)).longValue();
-		}
-
-		return biSize.multiply(new BigDecimal(0.5)).longValue();
-	}
 
 	/**
 	 * 删除数据
 	 * @param targetCapacity 预期回收大小
 	 * */
-	private RemoveDataModel removeData(long targetCapacity){
+	private AssertRemoveData removeData(long targetCapacity){
 
-		RemoveDataModel removeDataModel = new RemoveDataModel();
+		AssertRemoveData removeDataModel = new AssertRemoveData();
 
 		List<Long> expireTimeStampKeyList = new ArrayList<>(dataExpireInfo.keySet());
 		if(expireTimeStampKeyList.size() <= 0){
@@ -357,16 +218,23 @@ public class MemoryDataHelper implements DataHelper {
 	@Override
 	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) {
 
+		String applicationName; // 应用名
+		if (StringUtils.isEmpty(applicationName = methodcacheProperties.getName())) {
+			applicationName = springApplicationProperties.getName();
+		}
+
 		String methodSignature = method.toGenericString(); // 方法签名
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希值
 		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希值
 		String argsInfo = Arrays.toString(args); // 入参内容
 		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)); // 缓存哈希值
-		if(StringUtils.isEmpty(id)){
+		if (StringUtils.isEmpty(id)) {
 			id = String.valueOf(methodSignature.hashCode());
 		}
+
+		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id);
 		long startTime = new Date().getTime();
-		CacheDataModel cacheDataModel = getDataFromMemory(methodSignature,cacheHashCode);
+		CacheDataModel cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode);
 		boolean hit = (cacheDataModel != null);
 
 		log(String.format(  "\n ************* CacheData *************" +
@@ -431,8 +299,8 @@ public class MemoryDataHelper implements DataHelper {
 						setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
 
 					}
-					if (enableRecord) {
-						record(null, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+					if (methodcacheProperties.isEnableStatistics()) {
+						record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 					}
 					return data;
 				}
@@ -485,8 +353,8 @@ public class MemoryDataHelper implements DataHelper {
 				}
 			});
 		}
-		if (enableRecord) {
-			record(null, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+		if (methodcacheProperties.isEnableStatistics()) {
+			record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 		}
 		return cacheDataModel.getData();
 
@@ -599,48 +467,29 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Map<String, Map<String, Object>> getSituation(String match) {
-
-		Map<String, Map<String,Object>> situationMap = new HashMap<>();
-
-		Set<Map<Integer, CacheSituationModel>> situationModelMapSet = new HashSet<>(cacheSituation.values()); // 缓存情况
-		for(Map<Integer, CacheSituationModel> situationModelMap : situationModelMapSet){ // <缓存哈希值,数据>
-			if(situationModelMap.isEmpty()){
-				continue;
-			}
-
-			Set<CacheSituationModel> situationModelSet;
-
-			if(StringUtils.isEmpty(match)){
-				situationModelSet = new HashSet<>(situationModelMap.values());
-			}else {
-				// 模糊匹配，支持：缓存哈希值、方法签名、、缓存ID
-				situationModelSet = new HashSet<>();
-				for(Integer cacheHashCode : situationModelMap.keySet()){
-					CacheSituationModel situationModel = situationModelMap.get(cacheHashCode);
-					String methodSignature = situationModel.getMethodSignature();
-					String id = situationModel.getId();
-					if(match.equals(String.valueOf(cacheHashCode)) || methodSignature.contains(match) || id.contains(match)){
-						situationModelSet.add(situationModel);
-					}
-				}
-			}
-
-			for (CacheSituationModel situationModel : situationModelSet) {
-				if(situationModel != null){
-					filterSituationModel(situationMap, situationModel, match);
-				}
-			}
-
-		}
-		return situationMap;
+	public Map<String, CacheStatisticsModel> getCacheStatistics() {
+		return cacheStatistics;
 	}
+
+	@Override
+	public CacheStatisticsModel getCacheStatistics(String methodSignature) {
+		return cacheStatistics.get(methodSignature);
+	}
+
+	@Override
+	public void setCacheStatistics(String methodSignature, CacheStatisticsModel statisticsModel) {
+		cacheStatistics.put(methodSignature, statisticsModel);
+	}
+
+
+	/****************************************************************** 私有方法 start ******************************************************************/
 
 	/**
 	 * 从内存获取缓存数据
 	 *
 	 * @param methodSignature 方法签名
 	 * @param cacheHashCode 缓存哈希值
+	 * @return 缓存数据
 	 * */
 	private static CacheDataModel getDataFromMemory(String methodSignature, Integer cacheHashCode){
 
@@ -652,7 +501,6 @@ public class MemoryDataHelper implements DataHelper {
 		return null;
 	}
 
-
 	/**
 	 * 保存缓存数据至内存
 	 *
@@ -661,8 +509,6 @@ public class MemoryDataHelper implements DataHelper {
 	 * @param args 入参信息
 	 * @param data 数据
 	 * @param expireTime 过期时间
-	 *
-	 * 这里会对返回值进行反序列化
 	 * */
 	private void setDataToMemory(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode,  Object data, long expireTime, String id, String remark) {
 
@@ -682,6 +528,8 @@ public class MemoryDataHelper implements DataHelper {
 
 	/**
 	 * 缓存数据至内存
+	 *
+	 * @param cacheDataModel 缓存数据
 	 * */
 	private void setDataToMemory(CacheDataModel cacheDataModel) {
 
@@ -705,35 +553,10 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 从内存中获取缓存情况
-	 *
-	 * @result 缓存情况
-	 * */
-	private CacheSituationModel getSituationFromMemory(String methodSignature, Integer cacheHashCode) {
-		Map<Integer, CacheSituationModel> cacheSituationModelMap = cacheSituation.get(methodSignature);
-		if(cacheSituationModelMap != null){
-			return cacheSituationModelMap.get(cacheHashCode);
-		}
-
-		return null;
-	}
-
-	/**
-	 * 保存缓存情况至内存
-	 * */
-	private void setSituationToMemory(CacheSituationModel situationModel) {
-
-		String methodSignature = situationModel.getMethodSignature();
-		int cacheHashCode = situationModel.getCacheHashCode();
-
-		Map<Integer, CacheSituationModel> cacheSituationModelMap = cacheSituation.computeIfAbsent(methodSignature, k -> new HashMap<>());
-		cacheSituationModelMap.put(cacheHashCode,situationModel);
-	}
-
-
-
-	/**
 	 * 移除过期数据
+	 *
+	 * @param methodSignature 方法签名
+	 * @param cacheHashCode 缓存哈希值
 	 * */
 	private void doRemoveData(String methodSignature, Integer cacheHashCode) {
 		try {
@@ -752,6 +575,8 @@ public class MemoryDataHelper implements DataHelper {
 
 	/**
 	 * 移除数据
+	 *
+	 * @param cacheDataModel 要删除的数据
 	 * */
 	private void doRemoveData(CacheDataModel cacheDataModel) {
 		String methodSignature = cacheDataModel.getMethodSignature();
@@ -773,14 +598,72 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 打印日志
+	 * 内存回收
 	 *
-	 * @param info 内容
+	 * @param memUsage 内存使用信息
 	 * */
-	private void log(String info){
-		if(enableLog){
-			logger.info(info);
+	private void gc(MemoryUsage memUsage) {
+		if(memUsage == null){
+			memUsage = getMemoryOldGenUsage();
+
+			if(memUsage == null){
+				logger.error("[methodcache]获取内存信息失败");
+				return;
+			}
 		}
+
+		try {
+			cacheDataLock.lock();
+
+			long used = memUsage.getUsed();
+			long max = memUsage.getMax();
+			long cacheDataSize = getCacheDataSize();
+
+			if (!isAlarmed(cacheDataSize, used, gcThreshold)) {
+				logger.info("[methodcache]缓存数据未达到GC阈值，本次不回收。数据大小：" + cacheDataSize + "；内存使用：" + used + "；GC阈值=" + gcThreshold);
+				return;
+			}
+
+			doGC(cacheDataSize, used, max);
+
+		} finally {
+			cacheDataLock.unlock();
+		}
+	}
+
+	/**
+	 * 获取当前内存占用信息
+	 */
+	private MemoryUsage getMemoryOldGenUsage() {
+		List<MemoryPoolMXBean> memPools = ManagementFactory.getMemoryPoolMXBeans();
+		if (memPools != null) {
+			for (MemoryPoolMXBean mp : memPools) {
+				if (mp.getName().toLowerCase().endsWith("old gen")) {
+					return mp.getUsage();
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 断言回收数据的大小
+	 * @param size 缓存数据大小
+	 * @param used 内存使用大小
+	 * @param max  内存最大上限
+	 * @return 回收大小
+	 * */
+	private long assertGCCapacity(long size, long used, long max) {
+
+		BigDecimal biSize = new BigDecimal(size);
+		BigDecimal biUsed = new BigDecimal(used);
+		BigDecimal biMax = new BigDecimal(max);
+
+		if(biSize.compareTo(biUsed.multiply(new BigDecimal(0.9))) >= 0 || biSize.compareTo(biMax.multiply(new BigDecimal(0.4))) >= 0){
+			return biSize.multiply(new BigDecimal(0.3)).longValue();
+		}
+
+		return biSize.multiply(new BigDecimal(0.5)).longValue();
 	}
 
 	/**
@@ -798,9 +681,46 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 删除数据模型
+	 * 内存回收
+	 *
+	 * @param size 缓存数据大小
+	 * @param used 内存使用大小
+	 * @param max  内存最大上限
+	 */
+	private void doGC(long size, long used, long max) {
+		// 断言本次回收目标
+		long gcCapacity = assertGCCapacity(size, used, max);
+		logger.info("[methodcache]开始GC：数据条数=" + getCacheDataCount() + "，数据大小=" + size + "，计划回收=" + gcCapacity + "(" + (gcCapacity >> 10) + "K)");
+		long startAt = new Date().getTime();
+		AssertRemoveData removeData = removeData(gcCapacity);
+		System.gc();
+		logger.info("[methodcache]GC完成：数据条数=" + getCacheDataCount() + "，数据大小=" + getCacheDataSize() + "，" +
+				"实际回收=" + removeData.getSize() + "(" + (removeData.getSize() >> 10) + "K)，回收条数=" + removeData.getCount() + "，" +
+				"耗时=" + (new Date().getTime() - startAt));
+	}
+
+	/**
+	 * 获取缓存数据大小
+	 *
+	 * @return 数据大小，单位byte
 	 * */
-	private class RemoveDataModel{
+	private long getCacheDataSize() {
+		return cacheDataSize.get();
+	}
+
+	/**
+	 * 获取缓存数据条数
+	 *
+	 * @return 数据条数
+	 * */
+	private int getCacheDataCount() {
+		return cacheDataCount.get();
+	}
+
+	/**
+	 * 断言需删除的数据
+	 * */
+	private class AssertRemoveData {
 		/**
 		 * 数据大小
 		 * */
@@ -811,7 +731,7 @@ public class MemoryDataHelper implements DataHelper {
 		 * */
 		private AtomicInteger count;
 
-		RemoveDataModel() {
+		AssertRemoveData() {
 			this.size = new AtomicLong(0L);
 			this.count = new AtomicInteger(0);
 		}
@@ -832,4 +752,17 @@ public class MemoryDataHelper implements DataHelper {
 			return this.count.addAndGet(count);
 		}
 	}
+
+	/**
+	 * 打印日志
+	 *
+	 * @param info 内容
+	 * */
+	private void log(String info){
+		if(methodcacheProperties.isEnableLog()){
+			logger.info(info);
+		}
+	}
+
+	/****************************************************************** 私有方法  end  ******************************************************************/
 }

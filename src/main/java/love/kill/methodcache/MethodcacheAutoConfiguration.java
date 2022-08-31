@@ -34,7 +34,7 @@ public class MethodcacheAutoConfiguration {
 	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
-	DataHelper redisDataHelper(RedisTemplate redisTemplate, MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties){
+	DataHelper redisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, RedisTemplate redisTemplate){
 
 		RedisTemplate<Object, Object> cacheRedisTemplate = new RedisTemplate<>();
 		cacheRedisTemplate.setConnectionFactory(redisTemplate.getConnectionFactory());
@@ -46,12 +46,12 @@ public class MethodcacheAutoConfiguration {
 		cacheRedisTemplate.setHashValueSerializer(stringRedisSerializer);
 		cacheRedisTemplate.afterPropertiesSet();
 
-		return new RedisDataHelper(new RedisUtil(cacheRedisTemplate), methodcacheProperties, springProperties);
+		return new RedisDataHelper(methodcacheProperties, springProperties, new RedisUtil(cacheRedisTemplate));
 	}
 
 	@Bean
 	@ConditionalOnClass({MemoryDataHelper.class})
-	@ConditionalOnProperty(prefix = "methodcache",name = "enable-memory-monitor", havingValue = "true", matchIfMissing = true)
+	@ConditionalOnProperty(prefix = "methodcache",name = "enable-memory-monitor", havingValue = "true")
 	MemoryMonitor memoryMonitor(MethodcacheProperties methodcacheProperties){
 		return new MemoryMonitor(methodcacheProperties);
 	}

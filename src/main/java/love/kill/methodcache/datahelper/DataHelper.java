@@ -21,6 +21,21 @@ public interface DataHelper {
 	SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	/**
+	 * 缓存key
+	 * */
+	String METHOD_CACHE_DATA = "METHOD_CACHE_DATA";
+
+	/**
+	 * 缓存统计key
+	 * */
+	String METHOD_CACHE_STATISTICS = "METHOD_CACHE_STATISTICS";
+
+	/**
+	 * 签名和入参的分隔符
+	 * */
+	String KEY_SEPARATION_CHARACTER = "@";
+
+	/**
 	 * cpu个数
 	 */
 	int CPU_COUNT = Runtime.getRuntime().availableProcessors();
@@ -113,15 +128,90 @@ public interface DataHelper {
 	 * @param match 匹配规则
 	 * @return 缓存信息
 	 * */
-	Map<String, Map<String,Object>> getSituation(String match);
+	default Map<String, CacheStatisticsModel> getStatistics(String match) {
+
+		Map<String, CacheStatisticsModel> cacheStatistics = getCacheStatistics();
+		if(cacheStatistics == null){
+			return null;
+		}
+
+		Map<String, CacheStatisticsModel> resultMap = new HashMap<>();
+
+		for (String methodSignature : cacheStatistics.keySet()) {
+			CacheStatisticsModel situationModel = cacheStatistics.get(methodSignature);
+			String id = situationModel.getId();
+			if (StringUtils.isEmpty(match) ||
+					methodSignature.contains(match) ||
+					!StringUtils.isEmpty(id) && id.equals(match)
+			) {
+				resultMap.put(methodSignature, situationModel);
+			}
+		}
+		return resultMap;
+	}
 
 	/**
-	 * 缓存概况队列
+	 * 获取缓存统计
+	 *
+	 * @return 缓存统计信息
 	 * */
-	ArrayBlockingQueue<DataHelper.CacheSituationNode> recordSituationInfoQueue = new ArrayBlockingQueue<>(10);
+	Map<String, CacheStatisticsModel> getCacheStatistics();
 
 	/**
-	 * 记录缓存情况
+	 * 获取缓存统计
+	 *
+	 * @param methodSignature 方法签名
+	 * @return 缓存统计信息
+	 * */
+	CacheStatisticsModel getCacheStatistics(String methodSignature);
+
+	/**
+	 * 保存缓存统计信息
+	 *
+	 * @param methodSignature 方法签名
+	 * @param cacheStatisticsModel 统计信息
+	 * */
+	void setCacheStatistics(String methodSignature, CacheStatisticsModel cacheStatisticsModel);
+
+	/**
+	 * 缓存统计信息队列
+	 * */
+	ArrayBlockingQueue<CacheStatisticsNode> cacheStatisticsInfoQueue = new ArrayBlockingQueue<>(10);
+
+
+	/**
+	 * 增加统计信息
+	 * */
+	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode){
+		if (cacheStatisticsModel == null) {
+			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getMethodSignature(), cacheStatisticsNode.getMethodSignatureHashCode(),
+					cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
+		}
+
+		boolean hit = cacheStatisticsNode.isHit(); // 命中
+		long startTimestamp = cacheStatisticsNode.getStartTimestamp(); // 请求开始时间戳
+		long endTimestamp = cacheStatisticsNode.getEndTimestamp(); // 请求结束时间戳
+		long spend = endTimestamp - startTimestamp; // 请求耗时
+
+		if (hit) {
+			// 命中
+			cacheStatisticsModel.incrementHit();
+			cacheStatisticsModel.calculateAvgOfHitSpend(spend);
+			cacheStatisticsModel.setMinHitSpend(spend, startTimestamp);
+			cacheStatisticsModel.setMaxHitSpend(spend, startTimestamp);
+		} else {
+			// 未命中
+			cacheStatisticsModel.incrementFailure();
+			cacheStatisticsModel.calculateAvgOfFailureSpend(spend);
+			cacheStatisticsModel.setMinFailureSpend(spend, startTimestamp);
+			cacheStatisticsModel.setMaxFailureSpend(spend, startTimestamp);
+		}
+
+		return cacheStatisticsModel;
+	}
+
+	/**
+	 * 缓存统计
 	 *
 	 * @param cacheKey 缓存key
 	 * @param methodSignature 方法签名
@@ -138,8 +228,7 @@ public interface DataHelper {
 						int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
 		recordExecutorService.execute(() -> {
 			try {
-				long nowTimestamp = new Date().getTime();
-				recordSituationInfoQueue.put(new RedisDataHelper.CacheSituationNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, startTimestamp, nowTimestamp));
+				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, startTimestamp, new Date().getTime()));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -147,10 +236,76 @@ public interface DataHelper {
 	}
 
 	/**
+	 * 获取缓存key
+	 * @param applicationName 应用名
+	 * @param methodSignature 方法签名
+	 * @param cacheHashCode 缓存签名
+	 * @param id 缓存ID
+	 * @return 缓存key
+	 * */
+	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
+		if(StringUtils.isEmpty(applicationName)){
+			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+		}else {
+			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+		}
+	}
+
+	/**
 	 * 获取缓存情况
 	 *
 	 * */
-	default CacheSituationModel getSituation(CacheSituationNode situationNode, CacheSituationModel situationModel) {
+//	default CacheSituationModel getStatistics(CacheSituationNode situationNode, CacheStatisticsModel statisticsModel) {
+//		if (situationModel == null) {
+//			situationModel = new CacheSituationModel(situationNode.getMethodSignature(), situationNode.getMethodSignatureHashCode(), situationNode.getArgs(),
+//					situationNode.getArgsHashCode(), situationNode.getCacheHashCode(), situationNode.getId(), situationNode.getRemark());
+//		}
+//
+//		int hit = situationModel.getHit();
+//		long hitSpend = situationModel.getHitSpend();
+//		long minHitSpend = situationModel.getMinHitSpend();
+//		long maxHitSpend = situationModel.getMaxHitSpend();
+//
+//		int failure = situationModel.getFailure();
+//		long failureSpend = situationModel.getFailureSpend();
+//		long minFailureSpend = situationModel.getMinFailureSpend();
+//		long maxFailureSpend = situationModel.getMaxFailureSpend();
+//
+//		long spend = situationNode.getEndTimestamp() - situationNode.getStartTimestamp(); // 请求耗时
+//
+//		if (situationNode.isHit()) {
+//			situationModel.setHit(hit + 1);
+//			situationModel.setHitSpend(hitSpend + spend);
+//
+//			if (minHitSpend == 0L || minHitSpend > spend) {
+//				situationModel.setMinHitSpend(spend);
+//				situationModel.setTimeOfMinHitSpend(situationNode.getStartTimestamp());
+//			}
+//
+//			if (maxHitSpend < spend) {
+//				situationModel.setMaxHitSpend(spend);
+//				situationModel.setTimeOfMaxHitSpend(situationNode.getStartTimestamp());
+//			}
+//
+//		} else {
+//			situationModel.setFailure(failure + 1);
+//			situationModel.setFailureSpend(failureSpend + spend);
+//
+//			if (minFailureSpend == 0L || minFailureSpend > spend) {
+//				situationModel.setMinFailureSpend(spend);
+//				situationModel.setTimeOfMinFailureSpend(situationNode.getStartTimestamp());
+//			}
+//
+//			if (maxFailureSpend < spend) {
+//				situationModel.setMaxFailureSpend(spend);
+//				situationModel.setTimeOfMaxFailureSpend(situationNode.getStartTimestamp());
+//			}
+//		}
+//
+//		return situationModel;
+//	}
+	/**
+	default CacheSituationModel getStatistics(CacheSituationNode situationNode, CacheSituationModel situationModel) {
 		if (situationModel == null) {
 			situationModel = new CacheSituationModel(situationNode.getMethodSignature(), situationNode.getMethodSignatureHashCode(), situationNode.getArgs(),
 					situationNode.getArgsHashCode(), situationNode.getCacheHashCode(), situationNode.getId(), situationNode.getRemark());
@@ -199,6 +354,7 @@ public interface DataHelper {
 
 		return situationModel;
 	}
+	 */
 
 	/**
 	 * 筛选符合的缓存数据
@@ -235,201 +391,245 @@ public interface DataHelper {
 
 	}
 
+//	/**
+//	 * 筛选符合的缓存情况
+//	 *
+//	 * @param cacheMap 缓存数据
+//	 * @param cacheSituationModel 待筛选的节点
+//	 * @param match 匹配条件
+//	 * */
+//	@SuppressWarnings("unchecked")
+//	default void filterSituationModel(Map<String, Map<String, Object>> cacheMap, CacheSituationModel cacheSituationModel, String match) {
+//
+//		if (!StringUtils.isEmpty(match)) {
+//			int cacheHashCode = cacheSituationModel.getCacheHashCode();
+//			String methodSignature = cacheSituationModel.getMethodSignature();
+//			String id = cacheSituationModel.getId();
+//			if (!match.equals(String.valueOf(cacheHashCode)) && !methodSignature.contains(match) && !match.equals(id)) {
+//				return;
+//			}
+//		}
+//
+//		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheSituationModel.getMethodSignature(), k -> {
+//			Map<String, Object> map = new HashMap<>();
+//			map.put("id", cacheSituationModel.getId());
+//			map.put("remark", cacheSituationModel.getRemark());
+//			map.put("hit", 0);
+//			map.put("hitSpend", 0L);
+//			map.put("avgOfHitSpend", 0D);
+//			map.put("failure", 0);
+//			map.put("failureSpend", 0L);
+//			map.put("avgOfFailureSpend", 0D);
+//			return map;
+//		});
+//
+//		List<Map<String, Object>> returnList = (List<Map<String, Object>>) keyMap.computeIfAbsent("situation", k -> new ArrayList<>());
+//
+//		Map<String, Object> cacheInfo = new HashMap<>();
+//		cacheInfo.put("hashCode", cacheSituationModel.getCacheHashCode());
+//		cacheInfo.put("args", cacheSituationModel.getArgs());
+//
+//		int hit = cacheSituationModel.getHit();
+//		long hitSpend = cacheSituationModel.getHitSpend();
+//		long minHitSpend = cacheSituationModel.getMinHitSpend();
+//		String timeOfMinHitSpend = formatDate(cacheSituationModel.getTimeOfMinHitSpend());
+//		long maxHitSpend = cacheSituationModel.getMaxHitSpend();
+//		String timeOfMaxHitSpend = formatDate(cacheSituationModel.getTimeOfMaxHitSpend());
+//		double avgOfHitSpend = (hit > 0 && hitSpend > 0L) ?
+//				new BigDecimal(hitSpend).divide(new BigDecimal(hit), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
+//				0d;
+//
+//		int failure = cacheSituationModel.getFailure();
+//		long failureSpend = cacheSituationModel.getFailureSpend();
+//		long minFailureSpend = cacheSituationModel.getMinFailureSpend();
+//		String timeOfMinFailureSpend = formatDate(cacheSituationModel.getTimeOfMinFailureSpend());
+//		long maxFailureSpend = cacheSituationModel.getMaxFailureSpend();
+//		String timeOfMaxFailureSpend = formatDate(cacheSituationModel.getTimeOfMaxFailureSpend());
+//		double avgOfFailureSpend = (failure > 0 && failureSpend > 0L) ?
+//				new BigDecimal(failureSpend).divide(new BigDecimal(failure), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
+//				0d;
+//
+//
+//		cacheInfo.put("hit", hit);
+//		cacheInfo.put("hitSpend", hitSpend);
+//		cacheInfo.put("avgOfHitSpend", avgOfHitSpend);
+//		cacheInfo.put("minHitSpend", minHitSpend);
+//		cacheInfo.put("timeOfMinHitSpend", timeOfMinHitSpend);
+//		cacheInfo.put("maxHitSpend", maxHitSpend);
+//		cacheInfo.put("timeOfMaxHitSpend", timeOfMaxHitSpend);
+//		cacheInfo.put("failure", failure);
+//		cacheInfo.put("failureSpend", failureSpend);
+//		cacheInfo.put("avgOfFailureSpend", avgOfFailureSpend);
+//		cacheInfo.put("minFailureSpend", minFailureSpend);
+//		cacheInfo.put("timeOfMinFailureSpend", timeOfMinFailureSpend);
+//		cacheInfo.put("maxFailureSpend", maxFailureSpend);
+//		cacheInfo.put("timeOfMaxFailureSpend", timeOfMaxFailureSpend);
+//		returnList.add(cacheInfo);
+//
+//
+//		int totalHit = getTotalHit(keyMap) + hit;
+//		long totalHitSpend = getTotalHitSpend(keyMap) + hitSpend;
+//		long totalMinHitSpend = getMinHitSpend(keyMap);
+//		String totalTimeOfMinHitSpend = getTimeOfMinHitSpend(keyMap);
+//		if (totalMinHitSpend == 0L || totalMinHitSpend > minHitSpend) {
+//			totalMinHitSpend = minHitSpend;
+//			totalTimeOfMinHitSpend = timeOfMinHitSpend;
+//		}
+//		long totalMaxHitSpend = getMaxHitSpend(keyMap);
+//		String totalTimeOfMaxHitSpend = getTimeOfMaxHitSpend(keyMap);
+//		if (totalMaxHitSpend < maxHitSpend) {
+//			totalMaxHitSpend = maxHitSpend;
+//			totalTimeOfMaxHitSpend = timeOfMaxHitSpend;
+//		}
+//		double totalAvgOfHitSpend = (totalHit > 0 && totalHitSpend > 0L) ?
+//				new BigDecimal(totalHitSpend).divide(new BigDecimal(totalHit), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
+//				0d;
+//
+//		int totalFailure = getTotalFailure(keyMap) + failure;
+//		long totalFailureSpend = getTotalFailureSpend(keyMap) + failureSpend;
+//		long totalMinFailureSpend = getMinFailureSpend(keyMap);
+//		String totalTimeOfMinFailureSpend = getTimeOfMinFailureSpend(keyMap);
+//		if (totalMinFailureSpend == 0L || getMinFailureSpend(keyMap) > minFailureSpend) {
+//			totalMinFailureSpend = minFailureSpend;
+//			totalTimeOfMinFailureSpend = timeOfMinFailureSpend;
+//		}
+//		long totalMaxFailureSpend = getMaxFailureSpend(keyMap);
+//		String totalTimeOfMaxFailureSpend = getTimeOfMaxFailureSpend(keyMap);
+//		if (totalMaxFailureSpend < maxFailureSpend) {
+//			totalMaxFailureSpend = maxFailureSpend;
+//			totalTimeOfMaxFailureSpend = timeOfMaxFailureSpend;
+//		}
+//		double totalAvgOfFailureSpend = (totalFailure > 0 && totalFailureSpend > 0L) ?
+//				new BigDecimal(totalFailureSpend).divide(new BigDecimal(totalFailure), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
+//				0d;
+//
+//		keyMap.put("hit", totalHit);
+//		keyMap.put("hitSpend", totalHitSpend);
+//		keyMap.put("avgOfHitSpend", totalAvgOfHitSpend);
+//		keyMap.put("minHitSpend", totalMinHitSpend);
+//		keyMap.put("timeOfMinHitSpend", totalTimeOfMinHitSpend);
+//		keyMap.put("maxHitSpend", totalMaxHitSpend);
+//		keyMap.put("timeOfMaxHitSpend", totalTimeOfMaxHitSpend);
+//		keyMap.put("failure", totalFailure);
+//		keyMap.put("failureSpend", totalFailureSpend);
+//		keyMap.put("avgOfFailureSpend", totalAvgOfFailureSpend);
+//		keyMap.put("minFailureSpend", totalMinFailureSpend);
+//		keyMap.put("timeOfMinFailureSpend", totalTimeOfMinFailureSpend);
+//		keyMap.put("maxFailureSpend", totalMaxFailureSpend);
+//		keyMap.put("timeOfMaxFailureSpend", totalTimeOfMaxFailureSpend);
+//
+//	}
+
+
+//	default long getTotalFailureSpend(Map<String, Object> keyMap){
+//		return keyMap.get("failureSpend") instanceof Long ? (long) keyMap.get("failureSpend") : 0;
+//	}
+//
+//	default int getTotalHit(Map<String, Object> keyMap){
+//		return keyMap.get("hit") instanceof Integer ? (int) keyMap.get("hit") : 0;
+//	}
+//
+//	default long getTotalHitSpend(Map<String, Object> keyMap){
+//		return keyMap.get("hitSpend") instanceof Long ? (long) keyMap.get("hitSpend") : 0L;
+//	}
+//
+//	default long getMinHitSpend(Map<String, Object> keyMap){
+//		return keyMap.get("minHitSpend") instanceof Long ? (long) keyMap.get("minHitSpend") : 0L;
+//	}
+//
+//	default String getTimeOfMinHitSpend(Map<String, Object> keyMap){
+//		return keyMap.get("timeOfMinHitSpend") instanceof String ? (String) keyMap.get("timeOfMinHitSpend") : "";
+//	}
+//
+//	default long getMaxHitSpend(Map<String, Object> keyMap){
+//		return keyMap.get("maxHitSpend") instanceof Long ? (long) keyMap.get("maxHitSpend") : 0L;
+//	}
+//
+//	default String getTimeOfMaxHitSpend(Map<String, Object> keyMap){
+//		return keyMap.get("timeOfMaxHitSpend") instanceof String ? (String) keyMap.get("timeOfMaxHitSpend") : "";
+//	}
+//
+//	default int getTotalFailure(Map<String, Object> keyMap){
+//		return  keyMap.get("failure") instanceof Integer ? (int) keyMap.get("failure") : 0;
+//	}
+//
+//	default long getMinFailureSpend(Map<String, Object> keyMap){
+//		return keyMap.get("minFailureSpend") instanceof Long ? (long) keyMap.get("minFailureSpend") : 0L;
+//	}
+//
+//	default String getTimeOfMinFailureSpend(Map<String, Object> keyMap){
+//		return keyMap.get("timeOfMinFailureSpend") instanceof String ? (String) keyMap.get("timeOfMinFailureSpend") : "";
+//	}
+//
+//	default long getMaxFailureSpend(Map<String, Object> keyMap){
+//		return keyMap.get("maxFailureSpend") instanceof Long ? (long) keyMap.get("maxFailureSpend") : 0L;
+//	}
+//
+//	default String getTimeOfMaxFailureSpend(Map<String, Object> keyMap){
+//		return keyMap.get("timeOfMaxFailureSpend") instanceof String ? (String) keyMap.get("timeOfMaxFailureSpend") : "";
+//	}
+
 	/**
-	 * 筛选符合的缓存情况
-	 *
-	 * @param cacheMap 缓存数据
-	 * @param cacheSituationModel 待筛选的节点
-	 * @param match 匹配条件
+	 * 缓存统计信息节点
 	 * */
-	@SuppressWarnings("unchecked")
-	default void filterSituationModel(Map<String, Map<String, Object>> cacheMap, CacheSituationModel cacheSituationModel, String match) {
-
-		if (!StringUtils.isEmpty(match)) {
-			int cacheHashCode = cacheSituationModel.getCacheHashCode();
-			String methodSignature = cacheSituationModel.getMethodSignature();
-			String id = cacheSituationModel.getId();
-			if (!match.equals(String.valueOf(cacheHashCode)) && !methodSignature.contains(match) && !match.equals(id)) {
-				return;
-			}
-		}
-
-		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheSituationModel.getMethodSignature(), k -> {
-			Map<String, Object> map = new HashMap<>();
-			map.put("id", cacheSituationModel.getId());
-			map.put("remark", cacheSituationModel.getRemark());
-			map.put("hit", 0);
-			map.put("hitSpend", 0L);
-			map.put("avgOfHitSpend", 0D);
-			map.put("failure", 0);
-			map.put("failureSpend", 0L);
-			map.put("avgOfFailureSpend", 0D);
-			return map;
-		});
-
-		List<Map<String, Object>> returnList = (List<Map<String, Object>>) keyMap.computeIfAbsent("situation", k -> new ArrayList<>());
-
-		Map<String, Object> cacheInfo = new HashMap<>();
-		cacheInfo.put("hashCode", cacheSituationModel.getCacheHashCode());
-		cacheInfo.put("args", cacheSituationModel.getArgs());
-
-		int hit = cacheSituationModel.getHit();
-		long hitSpend = cacheSituationModel.getHitSpend();
-		long minHitSpend = cacheSituationModel.getMinHitSpend();
-		String timeOfMinHitSpend = formatDate(cacheSituationModel.getTimeOfMinHitSpend());
-		long maxHitSpend = cacheSituationModel.getMaxHitSpend();
-		String timeOfMaxHitSpend = formatDate(cacheSituationModel.getTimeOfMaxHitSpend());
-		double avgOfHitSpend = (hit > 0 && hitSpend > 0L) ?
-				new BigDecimal(hitSpend).divide(new BigDecimal(hit), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
-				0d;
-
-		int failure = cacheSituationModel.getFailure();
-		long failureSpend = cacheSituationModel.getFailureSpend();
-		long minFailureSpend = cacheSituationModel.getMinFailureSpend();
-		String timeOfMinFailureSpend = formatDate(cacheSituationModel.getTimeOfMinFailureSpend());
-		long maxFailureSpend = cacheSituationModel.getMaxFailureSpend();
-		String timeOfMaxFailureSpend = formatDate(cacheSituationModel.getTimeOfMaxFailureSpend());
-		double avgOfFailureSpend = (failure > 0 && failureSpend > 0L) ?
-				new BigDecimal(failureSpend).divide(new BigDecimal(failure), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
-				0d;
-
-
-		cacheInfo.put("hit", hit);
-		cacheInfo.put("hitSpend", hitSpend);
-		cacheInfo.put("avgOfHitSpend", avgOfHitSpend);
-		cacheInfo.put("minHitSpend", minHitSpend);
-		cacheInfo.put("timeOfMinHitSpend", timeOfMinHitSpend);
-		cacheInfo.put("maxHitSpend", maxHitSpend);
-		cacheInfo.put("timeOfMaxHitSpend", timeOfMaxHitSpend);
-		cacheInfo.put("failure", failure);
-		cacheInfo.put("failureSpend", failureSpend);
-		cacheInfo.put("avgOfFailureSpend", avgOfFailureSpend);
-		cacheInfo.put("minFailureSpend", minFailureSpend);
-		cacheInfo.put("timeOfMinFailureSpend", timeOfMinFailureSpend);
-		cacheInfo.put("maxFailureSpend", maxFailureSpend);
-		cacheInfo.put("timeOfMaxFailureSpend", timeOfMaxFailureSpend);
-		returnList.add(cacheInfo);
-
-
-		int totalHit = getTotalHit(keyMap) + hit;
-		long totalHitSpend = getTotalHitSpend(keyMap) + hitSpend;
-		long totalMinHitSpend = getMinHitSpend(keyMap);
-		String totalTimeOfMinHitSpend = getTimeOfMinHitSpend(keyMap);
-		if (totalMinHitSpend == 0L || totalMinHitSpend > minHitSpend) {
-			totalMinHitSpend = minHitSpend;
-			totalTimeOfMinHitSpend = timeOfMinHitSpend;
-		}
-		long totalMaxHitSpend = getMaxHitSpend(keyMap);
-		String totalTimeOfMaxHitSpend = getTimeOfMaxHitSpend(keyMap);
-		if (totalMaxHitSpend < maxHitSpend) {
-			totalMaxHitSpend = maxHitSpend;
-			totalTimeOfMaxHitSpend = timeOfMaxHitSpend;
-		}
-		double totalAvgOfHitSpend = (totalHit > 0 && totalHitSpend > 0L) ?
-				new BigDecimal(totalHitSpend).divide(new BigDecimal(totalHit), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
-				0d;
-
-		int totalFailure = getTotalFailure(keyMap) + failure;
-		long totalFailureSpend = getTotalFailureSpend(keyMap) + failureSpend;
-		long totalMinFailureSpend = getMinFailureSpend(keyMap);
-		String totalTimeOfMinFailureSpend = getTimeOfMinFailureSpend(keyMap);
-		if (totalMinFailureSpend == 0L || getMinFailureSpend(keyMap) > minFailureSpend) {
-			totalMinFailureSpend = minFailureSpend;
-			totalTimeOfMinFailureSpend = timeOfMinFailureSpend;
-		}
-		long totalMaxFailureSpend = getMaxFailureSpend(keyMap);
-		String totalTimeOfMaxFailureSpend = getTimeOfMaxFailureSpend(keyMap);
-		if (totalMaxFailureSpend < maxFailureSpend) {
-			totalMaxFailureSpend = maxFailureSpend;
-			totalTimeOfMaxFailureSpend = timeOfMaxFailureSpend;
-		}
-		double totalAvgOfFailureSpend = (totalFailure > 0 && totalFailureSpend > 0L) ?
-				new BigDecimal(totalFailureSpend).divide(new BigDecimal(totalFailure), 4, BigDecimal.ROUND_HALF_UP).doubleValue() :
-				0d;
-
-		keyMap.put("hit", totalHit);
-		keyMap.put("hitSpend", totalHitSpend);
-		keyMap.put("avgOfHitSpend", totalAvgOfHitSpend);
-		keyMap.put("minHitSpend", totalMinHitSpend);
-		keyMap.put("timeOfMinHitSpend", totalTimeOfMinHitSpend);
-		keyMap.put("maxHitSpend", totalMaxHitSpend);
-		keyMap.put("timeOfMaxHitSpend", totalTimeOfMaxHitSpend);
-		keyMap.put("failure", totalFailure);
-		keyMap.put("failureSpend", totalFailureSpend);
-		keyMap.put("avgOfFailureSpend", totalAvgOfFailureSpend);
-		keyMap.put("minFailureSpend", totalMinFailureSpend);
-		keyMap.put("timeOfMinFailureSpend", totalTimeOfMinFailureSpend);
-		keyMap.put("maxFailureSpend", totalMaxFailureSpend);
-		keyMap.put("timeOfMaxFailureSpend", totalTimeOfMaxFailureSpend);
-
-	}
-
-
-	default long getTotalFailureSpend(Map<String, Object> keyMap){
-		return keyMap.get("failureSpend") instanceof Long ? (long) keyMap.get("failureSpend") : 0;
-	}
-
-	default int getTotalHit(Map<String, Object> keyMap){
-		return keyMap.get("hit") instanceof Integer ? (int) keyMap.get("hit") : 0;
-	}
-
-	default long getTotalHitSpend(Map<String, Object> keyMap){
-		return keyMap.get("hitSpend") instanceof Long ? (long) keyMap.get("hitSpend") : 0L;
-	}
-
-	default long getMinHitSpend(Map<String, Object> keyMap){
-		return keyMap.get("minHitSpend") instanceof Long ? (long) keyMap.get("minHitSpend") : 0L;
-	}
-
-	default String getTimeOfMinHitSpend(Map<String, Object> keyMap){
-		return keyMap.get("timeOfMinHitSpend") instanceof String ? (String) keyMap.get("timeOfMinHitSpend") : "";
-	}
-
-	default long getMaxHitSpend(Map<String, Object> keyMap){
-		return keyMap.get("maxHitSpend") instanceof Long ? (long) keyMap.get("maxHitSpend") : 0L;
-	}
-
-	default String getTimeOfMaxHitSpend(Map<String, Object> keyMap){
-		return keyMap.get("timeOfMaxHitSpend") instanceof String ? (String) keyMap.get("timeOfMaxHitSpend") : "";
-	}
-
-	default int getTotalFailure(Map<String, Object> keyMap){
-		return  keyMap.get("failure") instanceof Integer ? (int) keyMap.get("failure") : 0;
-	}
-
-	default long getMinFailureSpend(Map<String, Object> keyMap){
-		return keyMap.get("minFailureSpend") instanceof Long ? (long) keyMap.get("minFailureSpend") : 0L;
-	}
-
-	default String getTimeOfMinFailureSpend(Map<String, Object> keyMap){
-		return keyMap.get("timeOfMinFailureSpend") instanceof String ? (String) keyMap.get("timeOfMinFailureSpend") : "";
-	}
-
-	default long getMaxFailureSpend(Map<String, Object> keyMap){
-		return keyMap.get("maxFailureSpend") instanceof Long ? (long) keyMap.get("maxFailureSpend") : 0L;
-	}
-
-	default String getTimeOfMaxFailureSpend(Map<String, Object> keyMap){
-		return keyMap.get("timeOfMaxFailureSpend") instanceof String ? (String) keyMap.get("timeOfMaxFailureSpend") : "";
-	}
-
-	/**
-	 * 缓存情况
-	 * */
-	class CacheSituationNode {
+	class CacheStatisticsNode {
+		/**
+		 * 缓存key
+		 * 由：applicationName、methodSignature、cacheHashCode、id组成
+		 * */
 		private String cacheKey;
+
+		/**
+		 * 方法签名
+		 * */
 		private String methodSignature;
+
+		/**
+		 * 方法签名哈希值
+		 * */
 		private int methodSignatureHashCode;
+
+		/**
+		 * 请求入参
+		 * */
 		private String args;
+
+		/**
+		 * 请求入参哈希值
+		 * */
 		private int argsHashCode;
+
+		/**
+		 * 缓存哈希值
+		 * */
 		private int cacheHashCode;
+
+		/**
+		 * 缓存ID
+		 * */
 		private String id;
+
+		/**
+		 * 缓存备注
+		 * */
 		private String remark;
+
+		/**
+		 * 缓存命中
+		 * */
 		private boolean hit;
+
+		/**
+		 * 请求开始时间
+		 * */
 		private long startTimestamp;
+
+		/**
+		 * 请求结束时间
+		 * */
 		private long endTimestamp;
 
-		public CacheSituationNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {
+		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {
 			this.cacheKey = cacheKey;
 			this.methodSignature = methodSignature;
 			this.methodSignatureHashCode = methodSignatureHashCode;
