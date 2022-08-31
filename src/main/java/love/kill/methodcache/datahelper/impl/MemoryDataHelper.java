@@ -431,6 +431,15 @@ public class MemoryDataHelper implements DataHelper {
 		}
 	}
 
+	@Override
+	public Map<String, CacheStatisticsModel> wipeStatisticsAll() {
+		Map<String, CacheStatisticsModel> resultMap = new ConcurrentHashMap<>(cacheStatistics);
+		synchronized (cacheStatistics) {
+			cacheStatistics.clear();
+		}
+		return resultMap;
+	}
+
 	/****************************************************************** 私有方法 start ******************************************************************/
 
 	/**

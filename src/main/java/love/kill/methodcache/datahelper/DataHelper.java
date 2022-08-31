@@ -65,7 +65,6 @@ public interface DataHelper {
 	 */
 	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Exception;
 
-
 	/**
 	 * 请求模型
 	 */
@@ -87,28 +86,12 @@ public interface DataHelper {
 	}
 
 	/**
-	 * 格式化时间
-	 *
-	 * @param timeStamp 时间戳
-	 * @return 格式化后的时间
-	 */
-	default String formatDate(long timeStamp) {
-		try {
-			return formatDate.format(new Date(timeStamp));
-		} catch (Exception e) {
-			e.printStackTrace();
-			return String.valueOf(timeStamp);
-		}
-	}
-
-	/**
 	 * 获取缓存数据
 	 *
 	 * @param match 匹配规则
 	 * @return key
 	 */
 	Map<String, Map<String, Object>> getCaches(String match);
-
 
 	/**
 	 * 清空数据
@@ -118,35 +101,6 @@ public interface DataHelper {
 	 * @return 删除的缓存
 	 */
 	Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode);
-
-
-	/**
-	 * 获取缓存情况
-	 *
-	 * @param match 匹配规则
-	 * @return 缓存信息
-	 */
-	default Map<String, CacheStatisticsModel> getStatistics(String match) {
-
-		Map<String, CacheStatisticsModel> cacheStatistics = getCacheStatistics();
-		if (cacheStatistics == null) {
-			return null;
-		}
-
-		Map<String, CacheStatisticsModel> resultMap = new HashMap<>();
-
-		for (String methodSignature : cacheStatistics.keySet()) {
-			CacheStatisticsModel situationModel = cacheStatistics.get(methodSignature);
-			String id = situationModel.getId();
-			if (StringUtils.isEmpty(match) ||
-					methodSignature.contains(match) ||
-					!StringUtils.isEmpty(id) && id.equals(match)
-			) {
-				resultMap.put(methodSignature, situationModel);
-			}
-		}
-		return resultMap;
-	}
 
 	/**
 	 * 获取缓存统计
@@ -176,6 +130,99 @@ public interface DataHelper {
 	 */
 	ArrayBlockingQueue<CacheStatisticsNode> cacheStatisticsInfoQueue = new ArrayBlockingQueue<>(10);
 
+	/**
+	 * 清空缓存统计
+	 *
+	 * @param statisticsModel 缓存信息
+	 */
+	void wipeStatistics(CacheStatisticsModel statisticsModel);
+
+	/**
+	 * 清空所有缓存统计
+	 *
+	 * @return 删除的缓存
+	 */
+	Map<String, CacheStatisticsModel> wipeStatisticsAll();
+
+	/**
+	 * 获取缓存key
+	 *
+	 * @param applicationName 应用名
+	 * @param methodSignature 方法签名
+	 * @param cacheHashCode   缓存签名
+	 * @param id              缓存ID
+	 * @return 缓存key
+	 */
+	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
+		if (StringUtils.isEmpty(applicationName)) {
+			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+		} else {
+			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+		}
+	}
+
+	/**
+	 * 筛选符合的缓存数据
+	 *
+	 * @param cacheMap       缓存数据
+	 * @param cacheDataModel 待筛选的节点
+	 * @param select         过滤值
+	 */
+	@SuppressWarnings("unchecked")
+	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
+		if (!StringUtils.isEmpty(select)) {
+			String args = cacheDataModel.getArgs();
+			if (!StringUtils.isEmpty(args) && !args.contains(select)) {
+				return;
+			}
+		}
+
+		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
+			Map<String, Object> map = new HashMap<>();
+			map.put("id", cacheDataModel.getId());
+			map.put("remark", cacheDataModel.getRemark());
+			return map;
+		});
+
+		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
+
+		Map<String, Object> cacheInfo = new HashMap<>();
+		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
+		cacheInfo.put("args", cacheDataModel.getArgs());
+		cacheInfo.put("data", cacheDataModel.getData());
+		cacheInfo.put("cacheTime", cacheDataModel.getFormatCacheTime());
+		cacheInfo.put("expireTime", cacheDataModel.getFormatExpireTime());
+		cacheInfoList.add(cacheInfo);
+
+	}
+
+	/**
+	 * 获取缓存统计
+	 *
+	 * @param match 匹配规则
+	 * @return 缓存信息
+	 */
+	default Map<String, CacheStatisticsModel> getStatistics(String match) {
+
+		Map<String, CacheStatisticsModel> cacheStatistics = getCacheStatistics();
+		if (cacheStatistics == null) {
+			return null;
+		}
+
+		Map<String, CacheStatisticsModel> resultMap = new HashMap<>();
+
+		for (String methodSignature : cacheStatistics.keySet()) {
+			CacheStatisticsModel situationModel = cacheStatistics.get(methodSignature);
+			String id = situationModel.getId();
+			if (StringUtils.isEmpty(match) ||
+					methodSignature.contains(match) ||
+					!StringUtils.isEmpty(id) && id.equals(match)
+			) {
+				resultMap.put(methodSignature, situationModel);
+			}
+		}
+		return resultMap;
+	}
 
 	/**
 	 * 增加统计信息
@@ -235,58 +282,6 @@ public interface DataHelper {
 	}
 
 	/**
-	 * 获取缓存key
-	 *
-	 * @param applicationName 应用名
-	 * @param methodSignature 方法签名
-	 * @param cacheHashCode   缓存签名
-	 * @param id              缓存ID
-	 * @return 缓存key
-	 */
-	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		if (StringUtils.isEmpty(applicationName)) {
-			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
-		} else {
-			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
-		}
-	}
-
-	/**
-	 * 筛选符合的缓存数据
-	 *
-	 * @param cacheMap       缓存数据
-	 * @param cacheDataModel 待筛选的节点
-	 * @param select         过滤值
-	 */
-	@SuppressWarnings("unchecked")
-	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
-		if (!StringUtils.isEmpty(select)) {
-			String args = cacheDataModel.getArgs();
-			if (!StringUtils.isEmpty(args) && !args.contains(select)) {
-				return;
-			}
-		}
-
-		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
-			Map<String, Object> map = new HashMap<>();
-			map.put("id", cacheDataModel.getId());
-			map.put("remark", cacheDataModel.getRemark());
-			return map;
-		});
-
-		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
-
-		Map<String, Object> cacheInfo = new HashMap<>();
-		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
-		cacheInfo.put("args", cacheDataModel.getArgs());
-		cacheInfo.put("data", cacheDataModel.getData());
-		cacheInfo.put("cacheTime", cacheDataModel.getFormatCacheTime());
-		cacheInfo.put("expireTime", cacheDataModel.getFormatExpireTime());
-		cacheInfoList.add(cacheInfo);
-
-	}
-
-	/**
 	 * 清空统计
 	 *
 	 * @param id              缓存ID
@@ -320,11 +315,20 @@ public interface DataHelper {
 	}
 
 	/**
-	 * 清空统计
+	 * 格式化时间
 	 *
-	 * @param statisticsModel 缓存信息
+	 * @param timeStamp 时间戳
+	 * @return 格式化后的时间
 	 */
-	void wipeStatistics(CacheStatisticsModel statisticsModel);
+	default String formatDate(long timeStamp) {
+		try {
+			return formatDate.format(new Date(timeStamp));
+		} catch (Exception e) {
+			e.printStackTrace();
+			return String.valueOf(timeStamp);
+		}
+	}
+
 
 	/**
 	 * 缓存统计信息节点
@@ -488,5 +492,4 @@ public interface DataHelper {
 			this.endTimestamp = endTimestamp;
 		}
 	}
-
 }

@@ -82,7 +82,17 @@ public class Statistics {
 	 */
 	@DeleteMapping("/all")
 	public Map<String, Map<String, Object>> deleteAll() {
-		return dataHelper.wipeCache(null, null);
+
+		Map<String, CacheStatisticsModel> wipeStatistics = dataHelper.wipeStatisticsAll();
+
+		Map<String, Map<String, Object>> resultMap = new TreeMap<>((situationKey1, situationKey2) ->
+				compare(wipeStatistics.get(situationKey1),
+						wipeStatistics.get(situationKey2),
+						"-1",
+						"0")
+		);
+
+		return transferStatistics(wipeStatistics, resultMap);
 	}
 
 	private Map<String, Map<String, Object>> transferStatistics(Map<String, CacheStatisticsModel> statistics, Map<String, Map<String, Object>> targetMap){

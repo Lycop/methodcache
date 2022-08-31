@@ -296,6 +296,13 @@ public class RedisDataHelper implements DataHelper {
 		}
 	}
 
+	@Override
+	public Map<String, CacheStatisticsModel> wipeStatisticsAll() {
+		Map<String, CacheStatisticsModel> resultMap = getCacheStatistics();
+		deleteStatisticsAllFromRedis();
+		return resultMap;
+	}
+
 	/****************************************************************** 私有方法 start ******************************************************************/
 
 	/**
@@ -463,6 +470,16 @@ public class RedisDataHelper implements DataHelper {
 		}
 
 		return resultMap;
+	}
+
+	/**
+	 * 获取缓存统计
+	 *
+	 * @return 缓存统计信息
+	 */
+	@SuppressWarnings("unchecked")
+	private void deleteStatisticsAllFromRedis() {
+		redisUtil.del(METHOD_CACHE_STATISTICS);
 	}
 
 	/**
