@@ -27,19 +27,19 @@ public class DataUtil {
 
 	private static int doGetHash(Object arg) throws IllegalAccessException {
 
-		if(arg == null){
+		if (arg == null) {
 			return 0;
 		}
 
-		if(isPrimitive(arg.getClass())){
+		if (isPrimitive(arg.getClass())) {
 			// 基本数据类型
 			return Objects.hash(arg);
 
-		}else {
+		} else {
 			// 复杂对象类型
 			Field[] declaredFields = arg.getClass().getDeclaredFields();
 
-			for(Field field : declaredFields){
+			for (Field field : declaredFields) {
 				field.setAccessible(true);
 			}
 
@@ -48,18 +48,18 @@ public class DataUtil {
 			// 按属性排序
 			fieldList.sort(Comparator.comparing(Field::toString));
 
-			Map<String,Integer> fieldHash = new LinkedHashMap<>();
-			for(Field field : fieldList){
-				fieldHash.put(field.toString(),doGetFieldHash(field,arg));
+			Map<String, Integer> fieldHash = new LinkedHashMap<>();
+			for (Field field : fieldList) {
+				fieldHash.put(field.toString(), doGetFieldHash(field, arg));
 			}
 			return Objects.hash(fieldHash);
 		}
 	}
 
 
-	private static int doGetFieldHash(Field field,Object object) throws IllegalAccessException {
+	private static int doGetFieldHash(Field field, Object object) throws IllegalAccessException {
 
-		if(object == null){
+		if (object == null) {
 			return 0;
 		}
 
@@ -67,7 +67,7 @@ public class DataUtil {
 		Object fieldObject = field.get(object);
 
 
-		if(isPrimitive(typeClass) || (typeClass.isAssignableFrom(Collection.class))){
+		if (isPrimitive(typeClass) || (typeClass.isAssignableFrom(Collection.class))) {
 			// 基本数据类型
 			return Objects.hash(fieldObject);
 
@@ -75,7 +75,7 @@ public class DataUtil {
 			// 复杂对象类型
 			Field[] declaredFields = typeClass.getDeclaredFields();
 
-			for(Field innerField : declaredFields){
+			for (Field innerField : declaredFields) {
 				innerField.setAccessible(true);
 			}
 
@@ -85,20 +85,20 @@ public class DataUtil {
 			fieldList.sort(Comparator.comparing(Field::toString));
 
 
-			Map<String,Integer> fieldHash = new LinkedHashMap<>();
-			for(Field innerField : fieldList){
-				fieldHash.put(innerField.toString(),doGetFieldHash(innerField,fieldObject));
+			Map<String, Integer> fieldHash = new LinkedHashMap<>();
+			for (Field innerField : fieldList) {
+				fieldHash.put(innerField.toString(), doGetFieldHash(innerField, fieldObject));
 			}
 			return Objects.hash(fieldHash);
 		}
 	}
 
 	private static boolean isPrimitive(Class clazz) {
-		return  clazz.isPrimitive() || isInternal(clazz);
+		return clazz.isPrimitive() || isInternal(clazz);
 	}
 
 	private static boolean isInternal(Class clazz) {
-		return  (Map.class == clazz) ||
+		return (Map.class == clazz) ||
 				(List.class == clazz) ||
 				(String.class == clazz) ||
 				(Short.class == clazz) ||

@@ -9,7 +9,7 @@ public class SpringApplicationProperties {
 
 	/**
 	 * 名称
-	 * */
+	 */
 	private String name;
 
 	public String getName() {

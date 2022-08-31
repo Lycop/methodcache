@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * @author Lycop
  */
-@ConditionalOnProperty(prefix = "methodcache",name = "enable-endpoint" , havingValue = "true")
+@ConditionalOnProperty(prefix = "methodcache", name = "enable-endpoint", havingValue = "true")
 @RestController
 @RequestMapping("/methodcache/cache")
 public class Cache {
@@ -25,7 +25,7 @@ public class Cache {
 	/**
 	 * 查询所有缓存数据
 	 *
-	 * @param match  模糊匹配，支持：方法签名、缓存ID、缓存哈希值
+	 * @param match 模糊匹配，支持：方法签名、缓存ID、缓存哈希值
 	 * @return 所有匹配成功的缓存
 	 */
 	@GetMapping
@@ -36,13 +36,13 @@ public class Cache {
 	/**
 	 * 清除数据
 	 *
-	 * @param id 缓存ID
+	 * @param id       缓存ID
 	 * @param hashCode 缓存哈希值
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping
 	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "hashcode", required = false) String hashCode) {
-		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(hashCode)){
+		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(hashCode)) {
 			return new HashMap<>();
 		}
 		return dataHelper.wipeCache(id, hashCode);
@@ -50,10 +50,11 @@ public class Cache {
 
 	/**
 	 * 清除所有数据
+	 *
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping("/all")
 	public Map<String, Map<String, Object>> deleteAll() {
-		return dataHelper.wipeCache(null,null);
+		return dataHelper.wipeCache(null, null);
 	}
 }

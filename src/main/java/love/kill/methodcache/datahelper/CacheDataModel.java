@@ -1,6 +1,7 @@
 package love.kill.methodcache.datahelper;
 
 import com.carrotsearch.sizeof.RamUsageEstimator;
+
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -18,58 +19,58 @@ public class CacheDataModel implements Serializable {
 
 	/**
 	 * 方法签名
-	 * */
+	 */
 	private String methodSignature;
 
 	/**
 	 * 方法签名哈希值
-	 * */
+	 */
 	private int methodSignatureHashCode;
 
 	/**
 	 * 入参
-	 * */
+	 */
 	private String args;
 
 	/**
 	 * 入参哈希值
-	 * */
+	 */
 	private int argsHashCode;
 
 	/**
 	 * 缓存哈希值
-	 * */
+	 */
 	private int cacheHashCode;
 
 	/**
 	 * 数据
-	 * */
+	 */
 	private Object data;
 
 	/**
 	 * 缓存时间
-	 * */
+	 */
 	private Long cacheTime = new Date().getTime();
 
 	/**
 	 * 过期时间（时间戳）
 	 * -1 代表永久有效
-	 * */
+	 */
 	private long expireTime;
 
 	/**
 	 * 备注
-	 * */
+	 */
 	private String remark;
 
 	/**
 	 * id
-	 * */
+	 */
 	private String id;
 
 	/**
 	 * 数据大小
-	 * */
+	 */
 	private long instanceSize = 0L;
 
 
@@ -120,12 +121,12 @@ public class CacheDataModel implements Serializable {
 	}
 
 
-	public synchronized boolean isExpired(){
+	public synchronized boolean isExpired() {
 		return expireTime >= 0L && new Date().getTime() >= expireTime;
 	}
 
-	public synchronized void expired(){
-		expireTime  = new Date().getTime();
+	public synchronized void expired() {
+		expireTime = new Date().getTime();
 	}
 
 
@@ -169,15 +170,15 @@ public class CacheDataModel implements Serializable {
 				'}';
 	}
 
-	private String formatDate(long timeStamp){
+	private String formatDate(long timeStamp) {
 		try {
 			return outPrintSimpleDateFormat.format(new Date(timeStamp));
-		}catch (Exception e){
+		} catch (Exception e) {
 			return String.valueOf(timeStamp);
 		}
 	}
 
-	private void refreshInstanceSize(){
+	private void refreshInstanceSize() {
 		this.instanceSize = RamUsageEstimator.sizeOf(this);
 	}
 }

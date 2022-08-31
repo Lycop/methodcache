@@ -26,15 +26,15 @@ import java.lang.reflect.Method;
 
 @Configuration
 @EnableConfigurationProperties({MethodcacheProperties.class, SpringApplicationProperties.class})
-@ConditionalOnProperty(prefix = "methodcache",name = "enable" , havingValue = "true")
+@ConditionalOnProperty(prefix = "methodcache", name = "enable", havingValue = "true")
 @ComponentScan(basePackages = {"love.kill.methodcache.controller"})
 public class MethodcacheAutoConfiguration {
 
 	@Bean
-	@ConditionalOnProperty(prefix = "methodcache",name = "cache-type" , havingValue = "R")
+	@ConditionalOnProperty(prefix = "methodcache", name = "cache-type", havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
-	DataHelper redisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, RedisTemplate redisTemplate){
+	DataHelper redisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, RedisTemplate redisTemplate) {
 
 		RedisTemplate<Object, Object> cacheRedisTemplate = new RedisTemplate<>();
 		cacheRedisTemplate.setConnectionFactory(redisTemplate.getConnectionFactory());
@@ -51,14 +51,14 @@ public class MethodcacheAutoConfiguration {
 
 	@Bean
 	@ConditionalOnClass({MemoryDataHelper.class})
-	@ConditionalOnProperty(prefix = "methodcache",name = "enable-memory-monitor", havingValue = "true")
-	MemoryMonitor memoryMonitor(MethodcacheProperties methodcacheProperties){
+	@ConditionalOnProperty(prefix = "methodcache", name = "enable-memory-monitor", havingValue = "true")
+	MemoryMonitor memoryMonitor(MethodcacheProperties methodcacheProperties) {
 		return new MemoryMonitor(methodcacheProperties);
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, @Nullable MemoryMonitor memoryMonitor){
+	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, @Nullable MemoryMonitor memoryMonitor) {
 		return new MemoryDataHelper(methodcacheProperties, springProperties, memoryMonitor);
 	}
 
@@ -70,12 +70,12 @@ public class MethodcacheAutoConfiguration {
 
 	@Bean
 	public CacheDataInterceptor cacheDataInterceptor(MethodcacheProperties methodcacheProperties, @Autowired(required = false) DataHelper dataHelper) {
-		return new CacheDataInterceptor(methodcacheProperties,dataHelper);
+		return new CacheDataInterceptor(methodcacheProperties, dataHelper);
 	}
 
 	@Bean
-	public StaticMethodMatcherPointcutAdvisor methodPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor,MethodcacheProperties methodcacheProperties) {
-		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor(){
+	public StaticMethodMatcherPointcutAdvisor methodPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor, MethodcacheProperties methodcacheProperties) {
+		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
 				// 拦截被 @CacheData 注解的接口或类

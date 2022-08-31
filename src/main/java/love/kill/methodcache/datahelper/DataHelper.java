@@ -20,17 +20,17 @@ public interface DataHelper {
 
 	/**
 	 * 缓存key
-	 * */
+	 */
 	String METHOD_CACHE_DATA = "METHOD_CACHE_DATA";
 
 	/**
 	 * 缓存统计key
-	 * */
+	 */
 	String METHOD_CACHE_STATISTICS = "METHOD_CACHE_STATISTICS";
 
 	/**
 	 * 签名和入参的分隔符
-	 * */
+	 */
 	String KEY_SEPARATION_CHARACTER = "@";
 
 	/**
@@ -40,7 +40,7 @@ public interface DataHelper {
 
 	/**
 	 * 执行线程
-	 * */
+	 */
 	ExecutorService recordExecutorService = new ThreadPoolExecutor(
 			CPU_COUNT + 1, // 核心线程数（CPU核心数 + 1）
 			CPU_COUNT * 2 + 1, // 线程池最大线程数（CPU核心数 * 2 + 1）
@@ -53,36 +53,36 @@ public interface DataHelper {
 	/**
 	 * 获取数据
 	 *
-	 * @param method 方法
-	 * @param args 请求参数
-	 * @param refreshData 刷新数据
+	 * @param method               方法
+	 * @param args                 请求参数
+	 * @param refreshData          刷新数据
 	 * @param actualDataFunctional 请求模型
-	 * @param id 缓存ID
-	 * @param remark 缓存备注
-	 * @param nullable 缓存null
+	 * @param id                   缓存ID
+	 * @param remark               缓存备注
+	 * @param nullable             缓存null
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
-	 * */
+	 */
 	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Exception;
 
 
 	/**
 	 * 请求模型
-	 * */
-	interface ActualDataFunctional{
+	 */
+	interface ActualDataFunctional {
 		/**
 		 * 发起一次真实请求，缓存并返回该数据
 		 *
 		 * @return 请求数据
 		 * @throws Throwable 发起实际请求时发生的异常
-		 * */
+		 */
 		Object getActualData() throws Throwable;
 
 		/**
 		 * 数据过期时间，时间戳
 		 *
 		 * @return 过期时间
-		 * */
+		 */
 		long getExpirationTime();
 	}
 
@@ -91,11 +91,11 @@ public interface DataHelper {
 	 *
 	 * @param timeStamp 时间戳
 	 * @return 格式化后的时间
-	 * */
-	default String formatDate(long timeStamp){
+	 */
+	default String formatDate(long timeStamp) {
 		try {
 			return formatDate.format(new Date(timeStamp));
-		}catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return String.valueOf(timeStamp);
 		}
@@ -106,18 +106,18 @@ public interface DataHelper {
 	 *
 	 * @param match 匹配规则
 	 * @return key
-	 * */
-	Map<String, Map<String,Object>> getCaches(String match);
+	 */
+	Map<String, Map<String, Object>> getCaches(String match);
 
 
 	/**
 	 * 清空数据
 	 *
-	 * @param id 缓存ID
+	 * @param id            缓存ID
 	 * @param cacheHashCode 缓存哈希值
 	 * @return 删除的缓存
-	 * */
-	Map<String, Map<String,Object>> wipeCache(String id, String cacheHashCode);
+	 */
+	Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode);
 
 
 	/**
@@ -125,11 +125,11 @@ public interface DataHelper {
 	 *
 	 * @param match 匹配规则
 	 * @return 缓存信息
-	 * */
+	 */
 	default Map<String, CacheStatisticsModel> getStatistics(String match) {
 
 		Map<String, CacheStatisticsModel> cacheStatistics = getCacheStatistics();
-		if(cacheStatistics == null){
+		if (cacheStatistics == null) {
 			return null;
 		}
 
@@ -152,7 +152,7 @@ public interface DataHelper {
 	 * 获取缓存统计
 	 *
 	 * @return 缓存统计信息
-	 * */
+	 */
 	Map<String, CacheStatisticsModel> getCacheStatistics();
 
 	/**
@@ -160,27 +160,27 @@ public interface DataHelper {
 	 *
 	 * @param methodSignature 方法签名
 	 * @return 缓存统计信息
-	 * */
+	 */
 	CacheStatisticsModel getCacheStatistics(String methodSignature);
 
 	/**
 	 * 保存缓存统计信息
 	 *
-	 * @param methodSignature 方法签名
+	 * @param methodSignature      方法签名
 	 * @param cacheStatisticsModel 统计信息
-	 * */
+	 */
 	void setCacheStatistics(String methodSignature, CacheStatisticsModel cacheStatisticsModel);
 
 	/**
 	 * 缓存统计信息队列
-	 * */
+	 */
 	ArrayBlockingQueue<CacheStatisticsNode> cacheStatisticsInfoQueue = new ArrayBlockingQueue<>(10);
 
 
 	/**
 	 * 增加统计信息
-	 * */
-	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode){
+	 */
+	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode) {
 		if (cacheStatisticsModel == null) {
 			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getMethodSignature(), cacheStatisticsNode.getMethodSignatureHashCode(),
 					cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
@@ -211,17 +211,17 @@ public interface DataHelper {
 	/**
 	 * 缓存统计
 	 *
-	 * @param cacheKey 缓存key
-	 * @param methodSignature 方法签名
+	 * @param cacheKey                缓存key
+	 * @param methodSignature         方法签名
 	 * @param methodSignatureHashCode 方法签名哈希
-	 * @param args 入参
-	 * @param argsHashCode 入参哈希
-	 * @param cacheHashCode 缓存哈希
-	 * @param id 缓存ID
-	 * @param remark 缓存备注
-	 * @param hit 命中
-	 * @param startTimestamp 记录开始时间
-	 * */
+	 * @param args                    入参
+	 * @param argsHashCode            入参哈希
+	 * @param cacheHashCode           缓存哈希
+	 * @param id                      缓存ID
+	 * @param remark                  缓存备注
+	 * @param hit                     命中
+	 * @param startTimestamp          记录开始时间
+	 */
 	default void record(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
 						int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
 		recordExecutorService.execute(() -> {
@@ -235,16 +235,17 @@ public interface DataHelper {
 
 	/**
 	 * 获取缓存key
+	 *
 	 * @param applicationName 应用名
 	 * @param methodSignature 方法签名
-	 * @param cacheHashCode 缓存签名
-	 * @param id 缓存ID
+	 * @param cacheHashCode   缓存签名
+	 * @param id              缓存ID
 	 * @return 缓存key
-	 * */
+	 */
 	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		if(StringUtils.isEmpty(applicationName)){
+		if (StringUtils.isEmpty(applicationName)) {
 			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
-		}else {
+		} else {
 			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
 		}
 	}
@@ -252,96 +253,96 @@ public interface DataHelper {
 	/**
 	 * 筛选符合的缓存数据
 	 *
-	 * @param cacheMap 缓存数据
+	 * @param cacheMap       缓存数据
 	 * @param cacheDataModel 待筛选的节点
-	 * @param select 过滤值
-	 * */
+	 * @param select         过滤值
+	 */
 	@SuppressWarnings("unchecked")
 	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
-		if(!StringUtils.isEmpty(select)){
+		if (!StringUtils.isEmpty(select)) {
 			String args = cacheDataModel.getArgs();
-			if(!StringUtils.isEmpty(args) && !args.contains(select)){
+			if (!StringUtils.isEmpty(args) && !args.contains(select)) {
 				return;
 			}
 		}
 
-		Map<String,Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
-			Map<String,Object> map = new HashMap<>();
-			map.put("id",cacheDataModel.getId());
-			map.put("remark",cacheDataModel.getRemark());
+		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
+			Map<String, Object> map = new HashMap<>();
+			map.put("id", cacheDataModel.getId());
+			map.put("remark", cacheDataModel.getRemark());
 			return map;
 		});
 
 		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
 
-		Map<String,Object> cacheInfo = new HashMap<>();
+		Map<String, Object> cacheInfo = new HashMap<>();
 		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
-		cacheInfo.put("args",cacheDataModel.getArgs());
-		cacheInfo.put("data",cacheDataModel.getData());
-		cacheInfo.put("cacheTime",cacheDataModel.getFormatCacheTime());
-		cacheInfo.put("expireTime",cacheDataModel.getFormatExpireTime());
+		cacheInfo.put("args", cacheDataModel.getArgs());
+		cacheInfo.put("data", cacheDataModel.getData());
+		cacheInfo.put("cacheTime", cacheDataModel.getFormatCacheTime());
+		cacheInfo.put("expireTime", cacheDataModel.getFormatExpireTime());
 		cacheInfoList.add(cacheInfo);
 
 	}
 
 	/**
 	 * 缓存统计信息节点
-	 * */
+	 */
 	class CacheStatisticsNode {
 		/**
 		 * 缓存key
 		 * 由：applicationName、methodSignature、cacheHashCode、id组成
-		 * */
+		 */
 		private String cacheKey;
 
 		/**
 		 * 方法签名
-		 * */
+		 */
 		private String methodSignature;
 
 		/**
 		 * 方法签名哈希值
-		 * */
+		 */
 		private int methodSignatureHashCode;
 
 		/**
 		 * 请求入参
-		 * */
+		 */
 		private String args;
 
 		/**
 		 * 请求入参哈希值
-		 * */
+		 */
 		private int argsHashCode;
 
 		/**
 		 * 缓存哈希值
-		 * */
+		 */
 		private int cacheHashCode;
 
 		/**
 		 * 缓存ID
-		 * */
+		 */
 		private String id;
 
 		/**
 		 * 缓存备注
-		 * */
+		 */
 		private String remark;
 
 		/**
 		 * 缓存命中
-		 * */
+		 */
 		private boolean hit;
 
 		/**
 		 * 请求开始时间
-		 * */
+		 */
 		private long startTimestamp;
 
 		/**
 		 * 请求结束时间
-		 * */
+		 */
 		private long endTimestamp;
 
 		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {

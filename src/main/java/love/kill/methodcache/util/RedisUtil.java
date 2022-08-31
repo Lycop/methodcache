@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class RedisUtil {
 
-	final private static ThreadLocal<ConcurrentHashMap<String,String>> threadLocal = new ThreadLocal<>();
+	final private static ThreadLocal<ConcurrentHashMap<String, String>> threadLocal = new ThreadLocal<>();
 
 	private RedisTemplate redisTemplate;
 
@@ -24,6 +24,7 @@ public class RedisUtil {
 
 	/**
 	 * 查询数据
+	 *
 	 * @param key 键
 	 * @return 值
 	 */
@@ -33,6 +34,7 @@ public class RedisUtil {
 
 	/**
 	 * 插入数据
+	 *
 	 * @param key   键
 	 * @param value 值
 	 */
@@ -48,8 +50,8 @@ public class RedisUtil {
 	/**
 	 * 插入数据并设置过期时间
 	 *
-	 * @param key   键
-	 * @param value 值
+	 * @param key     键
+	 * @param value   值
 	 * @param timeout 超时(毫秒)，小于等于0设置无限期
 	 */
 	@SuppressWarnings("unchecked")
@@ -67,17 +69,18 @@ public class RedisUtil {
 
 	/**
 	 * 查询key
+	 *
 	 * @param pattern 匹配值
 	 * @return 匹配的key
 	 */
 	@SuppressWarnings("unchecked")
 	public Set<String> keys(String pattern) {
-		if(StringUtils.isEmpty(pattern)){
+		if (StringUtils.isEmpty(pattern)) {
 			pattern = "*";
 		}
 		try {
 			return redisTemplate.keys(pattern);
-		}catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return new HashSet<>();
 		}
@@ -86,6 +89,7 @@ public class RedisUtil {
 
 	/**
 	 * 删除数据
+	 *
 	 * @param key 键
 	 * @return 删除成功
 	 */
@@ -93,7 +97,7 @@ public class RedisUtil {
 	public boolean del(String key) {
 		try {
 			Boolean b = redisTemplate.delete(key);
-			if(b == null){
+			if (b == null) {
 				return false;
 			}
 			return b;
@@ -106,7 +110,7 @@ public class RedisUtil {
 	/**
 	 * 获取哈希数据
 	 *
-	 * @param key 键
+	 * @param key   键
 	 * @param field 字段
 	 * @return 值
 	 */
@@ -114,7 +118,7 @@ public class RedisUtil {
 	public Object hget(String key, String field) {
 		try {
 			return (key == null || field == null) ? null : redisTemplate.opsForHash().get(key, field);
-		}catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -123,7 +127,7 @@ public class RedisUtil {
 	/**
 	 * 保存hash缓存
 	 *
-	 * @param key 键
+	 * @param key   键
 	 * @param field 字段
 	 * @param value 值
 	 */
@@ -146,7 +150,7 @@ public class RedisUtil {
 	public List<Object> hValues(String key) {
 		try {
 			return key == null ? null : redisTemplate.opsForHash().values(key);
-		}catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
@@ -154,15 +158,16 @@ public class RedisUtil {
 
 	/**
 	 * 加锁
-	 * @param key 键
+	 *
+	 * @param key   键
 	 * @param block 阻塞方式
 	 * @return 加锁成功
 	 * @throws InterruptedException 中断信号
 	 */
 	public boolean lock(String key, boolean block) throws InterruptedException {
-		if(block){
+		if (block) {
 			while (!lock(key)) {
-				if(Thread.currentThread().isInterrupted()){
+				if (Thread.currentThread().isInterrupted()) {
 					throw new InterruptedException();
 				}
 			}
@@ -173,20 +178,22 @@ public class RedisUtil {
 
 	/**
 	 * 加锁
+	 *
 	 * @param key 键
 	 * @return 加锁成功
 	 */
 	public boolean lock(String key) {
-		return RedisLockUtil.lock(redisTemplate,key,getLockValue(key),30 * 1000);
+		return RedisLockUtil.lock(redisTemplate, key, getLockValue(key), 30 * 1000);
 	}
 
 	/**
 	 * 解锁
+	 *
 	 * @param key 键
 	 * @return 解锁成功
 	 */
 	public boolean unlock(String key) {
-		return RedisLockUtil.unlock(redisTemplate,key,getLockValue(key));
+		return RedisLockUtil.unlock(redisTemplate, key, getLockValue(key));
 	}
 
 	/**

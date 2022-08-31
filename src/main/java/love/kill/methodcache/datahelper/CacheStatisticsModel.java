@@ -121,12 +121,16 @@ public class CacheStatisticsModel implements Serializable {
 		return remark;
 	}
 
+	public int getTimes() {
+		return this.hit + this.failure;
+	}
+
 	public int getHit() {
-		return hit;
+		return this.hit;
 	}
 
 	public void incrementHit() {
-		this.hit ++;
+		this.hit++;
 	}
 
 	public void incrementHit(int hit) {
@@ -146,14 +150,14 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void setMinHitSpend(long minHitSpend, long timeOfMinHitSpend) {
-		if(this.minHitSpend == 0L || this.minHitSpend > minHitSpend){
+		if (this.minHitSpend == 0L || this.minHitSpend > minHitSpend) {
 			this.minHitSpend = minHitSpend;
 			this.timeOfMinHitSpend = timeOfMinHitSpend;
 		}
 	}
 
 	public String printTimeOfMinHitSpend() {
-		if(this.timeOfMinHitSpend == 0L){
+		if (this.timeOfMinHitSpend == 0L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(timeOfMinHitSpend));
@@ -164,7 +168,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void setMaxHitSpend(long maxHitSpend, long timeOfMaxHitSpend) {
-		if(this.maxHitSpend < maxHitSpend){
+		if (this.maxHitSpend < maxHitSpend) {
 			this.maxHitSpend = maxHitSpend;
 			this.timeOfMaxHitSpend = timeOfMaxHitSpend;
 		}
@@ -172,7 +176,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMaxHitSpend() {
-		if(this.timeOfMaxHitSpend == 0L){
+		if (this.timeOfMaxHitSpend == 0L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxHitSpend));
@@ -184,7 +188,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void incrementFailure() {
-		this.failure ++;
+		this.failure++;
 	}
 
 	public void incrementFailure(int failure) {
@@ -204,7 +208,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void setMinFailureSpend(long minFailureSpend, long timeOfMinFailureSpend) {
-		if(this.minFailureSpend == 0L || this.minFailureSpend > minFailureSpend){
+		if (this.minFailureSpend == 0L || this.minFailureSpend > minFailureSpend) {
 			this.minFailureSpend = minFailureSpend;
 			this.timeOfMinFailureSpend = timeOfMinFailureSpend;
 		}
@@ -212,7 +216,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMinFailureSpend() {
-		if(this.timeOfMinFailureSpend == 0L){
+		if (this.timeOfMinFailureSpend == 0L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMinFailureSpend));
@@ -223,7 +227,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void setMaxFailureSpend(long maxFailureSpend, long timeOfMaxFailureSpend) {
-		if(this.maxFailureSpend < maxFailureSpend){
+		if (this.maxFailureSpend < maxFailureSpend) {
 			this.maxFailureSpend = maxFailureSpend;
 			this.timeOfMaxFailureSpend = timeOfMaxFailureSpend;
 		}
@@ -231,7 +235,7 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMaxFailureSpend() {
-		if(this.timeOfMaxFailureSpend == 0L){
+		if (this.timeOfMaxFailureSpend == 0L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxFailureSpend));

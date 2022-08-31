@@ -13,15 +13,15 @@ import java.util.Map;
  *
  * @author Lycop
  */
-@ConditionalOnProperty(prefix = "methodcache",name = "enable-endpoint" , havingValue = "true")
+@ConditionalOnProperty(prefix = "methodcache", name = "enable-endpoint", havingValue = "true")
 @RestController
 @RequestMapping("/methodcache/version")
 public class Version {
 	@GetMapping
-	public Map version(){
-		Map<String,String> versionMap = new HashMap<>();
-		versionMap.put("version","2.0.1");
-		versionMap.put("release time","2022-07-26");
+	public Map version() {
+		Map<String, String> versionMap = new HashMap<>();
+		versionMap.put("version", "2.0.1");
+		versionMap.put("release time", "2022-07-26");
 		return versionMap;
 	}
 }

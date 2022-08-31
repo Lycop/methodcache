@@ -18,8 +18,7 @@ public class RedisLockUtil {
 
 	private final static String REDIS_RESULT_OK = "OK";
 	private final static String REDIS_RESULT_REENTRANT = "REENTRANT";
-	private final static  String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
-
+	private final static String REDIS_LOCK_PREFIX = "REDIS_LOCK_"; // redis锁前缀
 	private static RedisSerializer<?> argsSerializer = new StringRedisSerializer();
 	private static RedisSerializer<String> resultSerializer = new StringRedisSerializer();
 
@@ -59,9 +58,10 @@ public class RedisLockUtil {
 
 	/**
 	 * 加锁(可重入锁)
+	 *
 	 * @param redisTemplate redisTemplate
-	 * @param key key
-	 * @param value value
+	 * @param key           key
+	 * @param value         value
 	 * @return 加锁结果。成功，true；失败，false
 	 */
 	@SuppressWarnings("unchecked")
@@ -70,15 +70,16 @@ public class RedisLockUtil {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(reentrantLockScript);
 		defaultRedisScript.setResultType(String.class);
-		String result = (String) redisTemplate.execute(defaultRedisScript,argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value, String.valueOf(expireTime));
+		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value, String.valueOf(expireTime));
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 	}
 
 	/**
 	 * 解锁(可重入锁)
+	 *
 	 * @param redisTemplate redisTemplate
-	 * @param key key
-	 * @param value value
+	 * @param key           key
+	 * @param value         value
 	 * @return 解锁结果。成功，true；失败，false
 	 */
 	@SuppressWarnings("unchecked")
