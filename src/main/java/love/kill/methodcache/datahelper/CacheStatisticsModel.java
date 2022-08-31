@@ -17,6 +17,11 @@ public class CacheStatisticsModel implements Serializable {
 	private static SimpleDateFormat outPrintSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	/**
+	 * 缓存key
+	 */
+	private String cacheKey;
+
+	/**
 	 * 方法签名
 	 */
 	private String methodSignature;
@@ -59,7 +64,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 命中时最小耗时入参
 	 */
-	private String argsOfMinHitSpend;
+	private String argsOfMinHitSpend = "";
 
 
 	/**
@@ -75,7 +80,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 命中时最大耗时入参
 	 */
-	private String argsOfMaxHitSpend;
+	private String argsOfMaxHitSpend = "";
 
 	/**
 	 * 未命中次数
@@ -100,7 +105,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 未命中时最小耗时入参
 	 */
-	private String argsOfMinFailureSpend;
+	private String argsOfMinFailureSpend = "";
 
 	/**
 	 * 未命中时最大耗时
@@ -115,16 +120,20 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 未命中时最小耗时入参
 	 */
-	private String argsOfMaxFailureSpend;
+	private String argsOfMaxFailureSpend = "";
 
 
-	public CacheStatisticsModel(String methodSignature, int methodSignatureHashCode, String id, String remark) {
+	public CacheStatisticsModel(String cacheKey, String methodSignature, int methodSignatureHashCode, String id, String remark) {
+		this.cacheKey = cacheKey;
 		this.methodSignature = methodSignature;
 		this.methodSignatureHashCode = methodSignatureHashCode;
 		this.id = id;
 		this.remark = remark;
 	}
 
+	public String getCacheKey() {
+		return cacheKey;
+	}
 
 	public String getMethodSignature() {
 		return methodSignature;

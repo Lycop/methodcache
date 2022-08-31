@@ -243,7 +243,7 @@ public class MemoryDataHelper implements DataHelper {
 
 					}
 					if (methodcacheProperties.isEnableStatistics()) {
-						record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 					}
 					return data;
 				}
@@ -297,7 +297,7 @@ public class MemoryDataHelper implements DataHelper {
 			});
 		}
 		if (methodcacheProperties.isEnableStatistics()) {
-			record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 		}
 		return cacheDataModel.getData();
 
@@ -424,6 +424,12 @@ public class MemoryDataHelper implements DataHelper {
 		cacheStatistics.put(methodSignature, statisticsModel);
 	}
 
+	@Override
+	public void wipeStatistics(CacheStatisticsModel cacheStatisticsModel) {
+		synchronized (cacheStatistics) {
+			cacheStatistics.remove(cacheStatisticsModel.getMethodSignature());
+		}
+	}
 
 	/****************************************************************** 私有方法 start ******************************************************************/
 

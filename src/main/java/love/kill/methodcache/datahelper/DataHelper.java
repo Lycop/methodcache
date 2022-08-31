@@ -182,8 +182,8 @@ public interface DataHelper {
 	 */
 	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode) {
 		if (cacheStatisticsModel == null) {
-			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getMethodSignature(), cacheStatisticsNode.getMethodSignatureHashCode(),
-					cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
+			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getCacheKey(), cacheStatisticsNode.getMethodSignature(),
+					cacheStatisticsNode.getMethodSignatureHashCode(), cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
 		}
 
 		boolean hit = cacheStatisticsNode.isHit(); // 命中
@@ -223,8 +223,8 @@ public interface DataHelper {
 	 * @param hit                     命中
 	 * @param startTimestamp          记录开始时间
 	 */
-	default void record(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-						int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
+	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
+								  int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
 		recordExecutorService.execute(() -> {
 			try {
 				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, startTimestamp, new Date().getTime()));
@@ -285,6 +285,46 @@ public interface DataHelper {
 		cacheInfoList.add(cacheInfo);
 
 	}
+
+	/**
+	 * 清空统计
+	 *
+	 * @param id              缓存ID
+	 * @param methodSignature 方法签名
+	 * @return 删除的缓存
+	 */
+	default Map<String, CacheStatisticsModel> wipeStatistics(String id, String methodSignature) {
+		Map<String, CacheStatisticsModel> cacheStatistics = getCacheStatistics();
+
+		if (cacheStatistics.isEmpty()) {
+			return new HashMap<>();
+		}
+
+		Map<String, CacheStatisticsModel> resultMap = new HashMap<>();
+
+		for (String key : cacheStatistics.keySet()) {
+			CacheStatisticsModel statisticsModel = cacheStatistics.get(key);
+			if (!StringUtils.isEmpty(id) && id.equals(statisticsModel.getId()) || !StringUtils.isEmpty(methodSignature) && methodSignature.equals(key)) {
+				resultMap.put(key, statisticsModel);
+			}
+		}
+
+		if (resultMap.isEmpty()) {
+			return new HashMap<>();
+		}
+
+		for (CacheStatisticsModel statisticsModel : resultMap.values()) {
+			wipeStatistics(statisticsModel);
+		}
+		return resultMap;
+	}
+
+	/**
+	 * 清空统计
+	 *
+	 * @param statisticsModel 缓存信息
+	 */
+	void wipeStatistics(CacheStatisticsModel statisticsModel);
 
 	/**
 	 * 缓存统计信息节点

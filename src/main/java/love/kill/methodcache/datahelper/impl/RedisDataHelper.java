@@ -163,7 +163,7 @@ public class RedisDataHelper implements DataHelper {
 						setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
 					}
 					if (methodcacheProperties.isEnableStatistics()) {
-						record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 					}
 					return data;
 				}
@@ -184,7 +184,7 @@ public class RedisDataHelper implements DataHelper {
 			refreshData(redisDataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
 		}
 		if (methodcacheProperties.isEnableStatistics()) {
-			record(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
 		}
 		return cacheDataModel.getData();
 	}
@@ -281,6 +281,19 @@ public class RedisDataHelper implements DataHelper {
 	@Override
 	public void setCacheStatistics(String methodSignature, CacheStatisticsModel cacheStatisticsModel) {
 		setStatisticsToRedis(methodSignature, cacheStatisticsModel);
+	}
+
+	@Override
+	public void wipeStatistics(CacheStatisticsModel statisticsModel) {
+		String statisticsLockKey = getIntactCacheStatisticsLockKey(statisticsModel.getCacheKey());
+		try {
+			redisUtil.lock(statisticsLockKey, true);
+			deleteStatisticsFromRedis(statisticsModel.getMethodSignature());
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			redisUtil.unlock(statisticsLockKey);
+		}
 	}
 
 	/****************************************************************** 私有方法 start ******************************************************************/
@@ -514,13 +527,6 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 获取缓存情况key
-	 */
-	private static String getIntactStatisticsKey(String key) {
-		return METHOD_CACHE_STATISTICS + KEY_SEPARATION_CHARACTER + key;
-	}
-
-	/**
 	 * 保存数据至Redis
 	 * 这里会对返回值进行反序列化
 	 */
@@ -546,6 +552,18 @@ public class RedisDataHelper implements DataHelper {
 	 */
 	private void setStatisticsToRedis(String methodSignature, CacheStatisticsModel cacheStatisticsModel) {
 		redisUtil.hset(METHOD_CACHE_STATISTICS, methodSignature, byteArray2String(SerializeUtil.serizlize(cacheStatisticsModel)));
+	}
+
+	/**
+	 * 保存缓存统计信息至Redis
+	 * <p>
+	 * Redis缓存信息模型(hash)
+	 * "METHOD_CACHE_STATISTICS":{
+	 * 方法签名:(序列化后的)统计信息
+	 * }
+	 */
+	private void deleteStatisticsFromRedis(String methodSignature) {
+		redisUtil.hdel(METHOD_CACHE_STATISTICS, methodSignature);
 	}
 
 	/**

@@ -5,10 +5,7 @@ import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,18 +34,59 @@ public class Statistics {
 	 */
 	@GetMapping
 	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "order_by", required = false) String orderBy, @RequestParam(value = "order_type", required = false) String orderType) {
+
 		Map<String, CacheStatisticsModel> statistics = dataHelper.getStatistics(match);
 
 		if (statistics == null) {
 			return new HashMap<>();
 		}
 
+		Map<String, Map<String, Object>> resultMap = new TreeMap<>((situationKey1, situationKey2) ->
+				compare(statistics.get(situationKey1),
+						statistics.get(situationKey2),
+						StringUtils.isEmpty(orderBy) ? "-1" : orderBy,
+						StringUtils.isEmpty(orderType) ? "0" : orderType)
+		);
 
-		Map<String, Map<String, Object>> orderly = new TreeMap<>((situationKey1, situationKey2) ->
-				compare(statistics.get(situationKey1), statistics.get(situationKey2), StringUtils.isEmpty(orderBy) ? "-1" : orderBy, StringUtils.isEmpty(orderType) ? "0" : orderType));
+		return transferStatistics(statistics, resultMap);
+	}
 
+	/**
+	 * 清除缓存统计
+	 *
+	 * @param id 缓存ID
+	 * @return 删除的缓存
+	 */
+	@DeleteMapping
+	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "method", required = false) String methodSignature) {
+		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(methodSignature)) {
+			return new HashMap<>();
+		}
+
+		Map<String, CacheStatisticsModel> wipeStatistics = dataHelper.wipeStatistics(id, methodSignature);
+
+		Map<String, Map<String, Object>> resultMap = new TreeMap<>((situationKey1, situationKey2) ->
+				compare(wipeStatistics.get(situationKey1),
+						wipeStatistics.get(situationKey2),
+						"-1",
+						"0")
+		);
+
+		return transferStatistics(wipeStatistics, resultMap);
+	}
+
+	/**
+	 * 清除所有数据
+	 *
+	 * @return 删除的缓存
+	 */
+	@DeleteMapping("/all")
+	public Map<String, Map<String, Object>> deleteAll() {
+		return dataHelper.wipeCache(null, null);
+	}
+
+	private Map<String, Map<String, Object>> transferStatistics(Map<String, CacheStatisticsModel> statistics, Map<String, Map<String, Object>> targetMap){
 		for (String methodSignature : statistics.keySet()) {
-
 			CacheStatisticsModel statisticsModel = statistics.get(methodSignature);
 			Map<String, Object> statisticsInfo = new HashMap<>();
 			statisticsInfo.put("id", statisticsModel.getId());
@@ -70,10 +108,10 @@ public class Statistics {
 			statisticsInfo.put("maxFailureSpend", statisticsModel.getMaxFailureSpend());
 			statisticsInfo.put("timeOfMaxFailureSpend", statisticsModel.printTimeOfMaxFailureSpend());
 			statisticsInfo.put("argsOfMaxFailureSpend", statisticsModel.getArgsOfMaxFailureSpend());
-			orderly.put(methodSignature, statisticsInfo);
+			targetMap.put(methodSignature, statisticsInfo);
 		}
 
-		return orderly;
+		return targetMap;
 	}
 
 	/**

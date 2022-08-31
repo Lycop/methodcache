@@ -141,6 +141,21 @@ public class RedisUtil {
 	}
 
 	/**
+	 * 删除hash缓存
+	 *
+	 * @param key   键
+	 * @param field 字段
+	 */
+	@SuppressWarnings("unchecked")
+	public void hdel(String key, String field) {
+		try {
+			redisTemplate.opsForHash().delete(key, field);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	/**
 	 * 获取hash所有值
 	 *
 	 * @param key 键
