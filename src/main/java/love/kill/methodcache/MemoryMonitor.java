@@ -22,11 +22,6 @@ public class MemoryMonitor {
 	private static Logger logger = LoggerFactory.getLogger(MemoryMonitor.class);
 
 	/**
-	 * 执行线程
-	 */
-	private static final ExecutorService executorService = ThreadPoolBuilder.buildDefaultThreadPool();
-
-	/**
 	 * 内存信息
 	 */
 	private final static MemoryMXBean memBean = ManagementFactory.getMemoryMXBean();
@@ -50,6 +45,11 @@ public class MemoryMonitor {
 	 * 内存溢出订阅者
 	 */
 	private final static List<Consumer<MemoryUsage>> subscribers = new CopyOnWriteArrayList<>();
+
+	/**
+	 * 执行线程
+	 */
+	private static final ExecutorService executorService = ThreadPoolBuilder.buildDefaultThreadPool();
 
 	public MemoryMonitor(MethodcacheProperties methodcacheProperties) {
 

@@ -8,6 +8,7 @@ import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.util.RedisUtil;
 import love.kill.methodcache.util.SerializeUtil;
+import love.kill.methodcache.util.ThreadPoolBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -26,28 +27,6 @@ public class RedisDataHelper implements DataHelper {
 	private static Logger logger = LoggerFactory.getLogger(RedisDataHelper.class);
 
 	/**
-	 * 锁前缀
-	 */
-	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_";
-
-	/**
-	 * cpu个数
-	 */
-	private final static int CPU_COUNT = Runtime.getRuntime().availableProcessors();
-
-	/**
-	 * 执行线程
-	 */
-	private static final ExecutorService executorService = new ThreadPoolExecutor(
-			CPU_COUNT + 1, // 核心线程数（CPU核心数 + 1）
-			CPU_COUNT * 2 + 1, // 线程池最大线程数（CPU核心数 * 2 + 1）
-			1,
-			TimeUnit.SECONDS,
-			new LinkedBlockingQueue<>(),
-			Executors.defaultThreadFactory(),
-			new ThreadPoolExecutor.AbortPolicy());
-
-	/**
 	 * 配置属性
 	 */
 	private final MethodcacheProperties methodcacheProperties;
@@ -61,6 +40,16 @@ public class RedisDataHelper implements DataHelper {
 	 * redis工具类
 	 */
 	private RedisUtil redisUtil;
+
+	/**
+	 * 锁前缀
+	 */
+	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_";
+
+	/**
+	 * 执行线程
+	 */
+	private static final ExecutorService executorService = ThreadPoolBuilder.buildDefaultThreadPool();
 
 
 	public RedisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties, RedisUtil redisUtil) {
