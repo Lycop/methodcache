@@ -561,7 +561,6 @@ public class RedisDataHelper implements DataHelper {
 
 	/**
 	 * 保存缓存统计信息至Redis
-	 * <p>
 	 * Redis缓存信息模型(hash)
 	 * "METHOD_CACHE_STATISTICS":{
 	 * 方法签名:(序列化后的)统计信息
@@ -573,7 +572,6 @@ public class RedisDataHelper implements DataHelper {
 
 	/**
 	 * 保存缓存统计信息至Redis
-	 * <p>
 	 * Redis缓存信息模型(hash)
 	 * "METHOD_CACHE_STATISTICS":{
 	 * 方法签名:(序列化后的)统计信息

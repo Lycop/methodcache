@@ -50,7 +50,6 @@ public class MethodcacheProperties {
 
 	/**
 	 * 切面排序值
-	 * <p>
 	 * 控制 Advisor 的执行顺序
 	 */
 	private int order = Ordered.LOWEST_PRECEDENCE;
