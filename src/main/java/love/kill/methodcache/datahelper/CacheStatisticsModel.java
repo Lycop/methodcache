@@ -153,6 +153,9 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMinHitSpend() {
+		if(this.timeOfMinHitSpend == 0L){
+			return "";
+		}
 		return outPrintSimpleDateFormat.format(new Date(timeOfMinHitSpend));
 	}
 
@@ -169,7 +172,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMaxHitSpend() {
-		return outPrintSimpleDateFormat.format(new Date(timeOfMaxHitSpend));
+		if(this.timeOfMaxHitSpend == 0L){
+			return "";
+		}
+		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxHitSpend));
 	}
 
 
@@ -206,7 +212,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMinFailureSpend() {
-		return outPrintSimpleDateFormat.format(new Date(timeOfMinFailureSpend));
+		if(this.timeOfMinFailureSpend == 0L){
+			return "";
+		}
+		return outPrintSimpleDateFormat.format(new Date(this.timeOfMinFailureSpend));
 	}
 
 	public long getMaxFailureSpend() {
@@ -222,7 +231,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printTimeOfMaxFailureSpend() {
-		return outPrintSimpleDateFormat.format(new Date(timeOfMaxFailureSpend));
+		if(this.timeOfMaxFailureSpend == 0L){
+			return "";
+		}
+		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxFailureSpend));
 	}
 
 	@Override
