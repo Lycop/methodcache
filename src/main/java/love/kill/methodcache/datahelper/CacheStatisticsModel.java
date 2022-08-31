@@ -57,6 +57,12 @@ public class CacheStatisticsModel implements Serializable {
 	private long timeOfMinHitSpend;
 
 	/**
+	 * 命中时最小耗时入参
+	 */
+	private String argsOfMinHitSpend;
+
+
+	/**
 	 * 命中时最大耗时
 	 */
 	private long maxHitSpend;
@@ -65,6 +71,11 @@ public class CacheStatisticsModel implements Serializable {
 	 * 命中时最大耗时发生时间(时间戳，毫秒)
 	 */
 	private long timeOfMaxHitSpend;
+
+	/**
+	 * 命中时最大耗时入参
+	 */
+	private String argsOfMaxHitSpend;
 
 	/**
 	 * 未命中次数
@@ -87,6 +98,11 @@ public class CacheStatisticsModel implements Serializable {
 	private long timeOfMinFailureSpend;
 
 	/**
+	 * 未命中时最小耗时入参
+	 */
+	private String argsOfMinFailureSpend;
+
+	/**
 	 * 未命中时最大耗时
 	 */
 	private long maxFailureSpend;
@@ -95,6 +111,11 @@ public class CacheStatisticsModel implements Serializable {
 	 * 未命中时最大耗时发生时间(时间戳，毫秒)
 	 */
 	private long timeOfMaxFailureSpend;
+
+	/**
+	 * 未命中时最小耗时入参
+	 */
+	private String argsOfMaxFailureSpend;
 
 
 	public CacheStatisticsModel(String methodSignature, int methodSignatureHashCode, String id, String remark) {
@@ -149,11 +170,16 @@ public class CacheStatisticsModel implements Serializable {
 		return minHitSpend;
 	}
 
-	public void setMinHitSpend(long minHitSpend, long timeOfMinHitSpend) {
+	public void setMinHitSpend(long minHitSpend, long timeOfMinHitSpend, String args) {
 		if (this.minHitSpend == 0L || this.minHitSpend > minHitSpend) {
 			this.minHitSpend = minHitSpend;
 			this.timeOfMinHitSpend = timeOfMinHitSpend;
+			this.argsOfMinHitSpend = args;
 		}
+	}
+
+	public String getArgsOfMinHitSpend() {
+		return argsOfMinHitSpend;
 	}
 
 	public String printTimeOfMinHitSpend() {
@@ -167,12 +193,16 @@ public class CacheStatisticsModel implements Serializable {
 		return maxHitSpend;
 	}
 
-	public void setMaxHitSpend(long maxHitSpend, long timeOfMaxHitSpend) {
+	public void setMaxHitSpend(long maxHitSpend, long timeOfMaxHitSpend, String args) {
 		if (this.maxHitSpend < maxHitSpend) {
 			this.maxHitSpend = maxHitSpend;
 			this.timeOfMaxHitSpend = timeOfMaxHitSpend;
+			this.argsOfMaxHitSpend = args;
 		}
+	}
 
+	public String getArgsOfMaxHitSpend() {
+		return argsOfMaxHitSpend;
 	}
 
 	public String printTimeOfMaxHitSpend() {
@@ -207,12 +237,16 @@ public class CacheStatisticsModel implements Serializable {
 		return minFailureSpend;
 	}
 
-	public void setMinFailureSpend(long minFailureSpend, long timeOfMinFailureSpend) {
+	public void setMinFailureSpend(long minFailureSpend, long timeOfMinFailureSpend, String args) {
 		if (this.minFailureSpend == 0L || this.minFailureSpend > minFailureSpend) {
 			this.minFailureSpend = minFailureSpend;
 			this.timeOfMinFailureSpend = timeOfMinFailureSpend;
+			this.argsOfMinFailureSpend = args;
 		}
+	}
 
+	public String getArgsOfMinFailureSpend() {
+		return argsOfMinFailureSpend;
 	}
 
 	public String printTimeOfMinFailureSpend() {
@@ -226,12 +260,16 @@ public class CacheStatisticsModel implements Serializable {
 		return maxFailureSpend;
 	}
 
-	public void setMaxFailureSpend(long maxFailureSpend, long timeOfMaxFailureSpend) {
+	public void setMaxFailureSpend(long maxFailureSpend, long timeOfMaxFailureSpend, String args) {
 		if (this.maxFailureSpend < maxFailureSpend) {
 			this.maxFailureSpend = maxFailureSpend;
 			this.timeOfMaxFailureSpend = timeOfMaxFailureSpend;
+			this.argsOfMaxFailureSpend = args;
 		}
+	}
 
+	public String getArgsOfMaxFailureSpend() {
+		return argsOfMaxFailureSpend;
 	}
 
 	public String printTimeOfMaxFailureSpend() {

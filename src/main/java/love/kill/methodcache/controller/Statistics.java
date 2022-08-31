@@ -58,14 +58,18 @@ public class Statistics {
 			statisticsInfo.put("avgOfHitSpend", statisticsModel.getAvgOfHitSpend());
 			statisticsInfo.put("minHitSpend", statisticsModel.getMinHitSpend());
 			statisticsInfo.put("timeOfMinHitSpend", statisticsModel.printTimeOfMinHitSpend());
+			statisticsInfo.put("argsOfMinHitSpend", statisticsModel.getArgsOfMinHitSpend());
 			statisticsInfo.put("maxHitSpend", statisticsModel.getMaxHitSpend());
 			statisticsInfo.put("timeOfMaxHitSpend", statisticsModel.printTimeOfMaxHitSpend());
+			statisticsInfo.put("argsOfMaxHitSpend", statisticsModel.getArgsOfMaxHitSpend());
 			statisticsInfo.put("failure", statisticsModel.getFailure());
 			statisticsInfo.put("avgOfFailureSpend", statisticsModel.getAvgOfFailureSpend());
 			statisticsInfo.put("minFailureSpend", statisticsModel.getMinFailureSpend());
 			statisticsInfo.put("timeOfMinFailureSpend", statisticsModel.printTimeOfMinFailureSpend());
+			statisticsInfo.put("argsOfMinFailureSpend", statisticsModel.getArgsOfMinFailureSpend());
 			statisticsInfo.put("maxFailureSpend", statisticsModel.getMaxFailureSpend());
 			statisticsInfo.put("timeOfMaxFailureSpend", statisticsModel.printTimeOfMaxFailureSpend());
+			statisticsInfo.put("argsOfMaxFailureSpend", statisticsModel.getArgsOfMaxFailureSpend());
 			orderly.put(methodSignature, statisticsInfo);
 		}
 

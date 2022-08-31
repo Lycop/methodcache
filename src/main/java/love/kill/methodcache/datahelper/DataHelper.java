@@ -190,19 +190,20 @@ public interface DataHelper {
 		long startTimestamp = cacheStatisticsNode.getStartTimestamp(); // 请求开始时间戳
 		long endTimestamp = cacheStatisticsNode.getEndTimestamp(); // 请求结束时间戳
 		long spend = endTimestamp - startTimestamp; // 请求耗时
+		String args = cacheStatisticsNode.getArgs(); // 请求入参
 
 		if (hit) {
 			// 命中
 			cacheStatisticsModel.incrementHit();
 			cacheStatisticsModel.calculateAvgOfHitSpend(spend);
-			cacheStatisticsModel.setMinHitSpend(spend, startTimestamp);
-			cacheStatisticsModel.setMaxHitSpend(spend, startTimestamp);
+			cacheStatisticsModel.setMinHitSpend(spend, startTimestamp, args);
+			cacheStatisticsModel.setMaxHitSpend(spend, startTimestamp, args);
 		} else {
 			// 未命中
 			cacheStatisticsModel.incrementFailure();
 			cacheStatisticsModel.calculateAvgOfFailureSpend(spend);
-			cacheStatisticsModel.setMinFailureSpend(spend, startTimestamp);
-			cacheStatisticsModel.setMaxFailureSpend(spend, startTimestamp);
+			cacheStatisticsModel.setMinFailureSpend(spend, startTimestamp, args);
+			cacheStatisticsModel.setMaxFailureSpend(spend, startTimestamp, args);
 		}
 
 		return cacheStatisticsModel;
