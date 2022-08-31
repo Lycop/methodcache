@@ -28,7 +28,7 @@ public class Statistics {
 	 * 查询缓存统计
 	 *
 	 * @param match     模糊匹配，支持：方法签名、缓存ID
-	 * @param orderBy   排序内容，0-id，1-命中次数，2-未命中次数，3-命中时平均耗时，4-未命中时平均耗时
+	 * @param orderBy   排序内容，0-id，1-总次数，2-命中次数，3-未命中次数，4-命中时平均耗时，5-未命中时平均耗时
 	 * @param orderType 排序方式，0-升序，1-降序
 	 * @return 所有匹配成功的缓存
 	 */
