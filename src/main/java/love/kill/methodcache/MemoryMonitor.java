@@ -80,25 +80,6 @@ public class MemoryMonitor {
 				}
 			}
 		}, null, null);
-
-		printMemoryInfo(); // todo
-
-	}
-
-	/**
-	 *
-	 * */
-	private void printMemoryInfo() {
-		executorService.execute(() -> {
-			while (true) {
-				logger.info("heap memory info = [" + memBean.getHeapMemoryUsage() + "]"); // TODO: 2022/8/26  
-				try {
-					Thread.sleep(5000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-		});
 	}
 
 	/**
