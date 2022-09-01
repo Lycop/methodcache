@@ -55,6 +55,7 @@ public class Statistics {
 	 * 清除缓存统计
 	 *
 	 * @param id 缓存ID
+	 * @param methodSignature 方法签名
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping
