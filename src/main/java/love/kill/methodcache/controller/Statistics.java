@@ -103,22 +103,22 @@ public class Statistics {
 			statisticsInfo.put("id", statisticsModel.getId());
 			statisticsInfo.put("remark", statisticsModel.getRemark());
 			statisticsInfo.put("times", statisticsModel.getTimes());
-			statisticsInfo.put("hit", statisticsModel.getHit());
-			statisticsInfo.put("avgOfHitSpend", statisticsModel.getAvgOfHitSpend());
-			statisticsInfo.put("minHitSpend", statisticsModel.getMinHitSpend());
+			statisticsInfo.put("hit", statisticsModel.printHit());
+			statisticsInfo.put("avgOfHitSpend", statisticsModel.printAvgOfHitSpend());
+			statisticsInfo.put("minHitSpend", statisticsModel.printMinHitSpend());
 			statisticsInfo.put("timeOfMinHitSpend", statisticsModel.printTimeOfMinHitSpend());
-			statisticsInfo.put("argsOfMinHitSpend", statisticsModel.getArgsOfMinHitSpend());
-			statisticsInfo.put("maxHitSpend", statisticsModel.getMaxHitSpend());
+			statisticsInfo.put("argsOfMinHitSpend", statisticsModel.printArgsOfMinHitSpend());
+			statisticsInfo.put("maxHitSpend", statisticsModel.printMaxHitSpend());
 			statisticsInfo.put("timeOfMaxHitSpend", statisticsModel.printTimeOfMaxHitSpend());
-			statisticsInfo.put("argsOfMaxHitSpend", statisticsModel.getArgsOfMaxHitSpend());
-			statisticsInfo.put("failure", statisticsModel.getFailure());
-			statisticsInfo.put("avgOfFailureSpend", statisticsModel.getAvgOfFailureSpend());
-			statisticsInfo.put("minFailureSpend", statisticsModel.getMinFailureSpend());
+			statisticsInfo.put("argsOfMaxHitSpend", statisticsModel.printArgsOfMaxHitSpend());
+			statisticsInfo.put("failure", statisticsModel.printFailure());
+			statisticsInfo.put("avgOfFailureSpend", statisticsModel.printAvgOfFailureSpend());
+			statisticsInfo.put("minFailureSpend", statisticsModel.printMinFailureSpend());
 			statisticsInfo.put("timeOfMinFailureSpend", statisticsModel.printTimeOfMinFailureSpend());
-			statisticsInfo.put("argsOfMinFailureSpend", statisticsModel.getArgsOfMinFailureSpend());
-			statisticsInfo.put("maxFailureSpend", statisticsModel.getMaxFailureSpend());
+			statisticsInfo.put("argsOfMinFailureSpend", statisticsModel.printArgsOfMinFailureSpend());
+			statisticsInfo.put("maxFailureSpend", statisticsModel.printMaxFailureSpend());
 			statisticsInfo.put("timeOfMaxFailureSpend", statisticsModel.printTimeOfMaxFailureSpend());
-			statisticsInfo.put("argsOfMaxFailureSpend", statisticsModel.getArgsOfMaxFailureSpend());
+			statisticsInfo.put("argsOfMaxFailureSpend", statisticsModel.printArgsOfMaxFailureSpend());
 			targetMap.put(methodSignature, statisticsInfo);
 		}
 

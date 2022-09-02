@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * 缓存统计
@@ -44,38 +45,37 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 命中次数
 	 */
-	private int hit;
+	private int hit = -1;
 
 	/**
 	 * 命中平均耗时
 	 */
-	private long avgOfHitSpend;
+	private long avgOfHitSpend = -1L;
 
 	/**
 	 * 命中时最小耗时
 	 */
-	private long minHitSpend;
+	private long minHitSpend = -1L;
 
 	/**
 	 * 命中时最小耗时发生时间(时间戳，毫秒)
 	 */
-	private long timeOfMinHitSpend;
+	private long timeOfMinHitSpend = -1L;
 
 	/**
 	 * 命中时最小耗时入参
 	 */
 	private String argsOfMinHitSpend = "";
 
-
 	/**
 	 * 命中时最大耗时
 	 */
-	private long maxHitSpend;
+	private long maxHitSpend = -1L;
 
 	/**
 	 * 命中时最大耗时发生时间(时间戳，毫秒)
 	 */
-	private long timeOfMaxHitSpend;
+	private long timeOfMaxHitSpend = -1L;
 
 	/**
 	 * 命中时最大耗时入参
@@ -85,22 +85,22 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 未命中次数
 	 */
-	private int failure;
+	private int failure = -1;
 
 	/**
 	 * 未命中平均耗时
 	 */
-	private long avgOfFailureSpend;
+	private long avgOfFailureSpend = -1L;
 
 	/**
 	 * 未命中时最小耗时
 	 */
-	private long minFailureSpend;
+	private long minFailureSpend = -1L;
 
 	/**
 	 * 未命中时最小耗时发生时间(时间戳，毫秒)
 	 */
-	private long timeOfMinFailureSpend;
+	private long timeOfMinFailureSpend = -1;
 
 	/**
 	 * 未命中时最小耗时入参
@@ -110,12 +110,12 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 未命中时最大耗时
 	 */
-	private long maxFailureSpend;
+	private long maxFailureSpend = -1L;
 
 	/**
 	 * 未命中时最大耗时发生时间(时间戳，毫秒)
 	 */
-	private long timeOfMaxFailureSpend;
+	private long timeOfMaxFailureSpend = -1L;
 
 	/**
 	 * 未命中时最小耗时入参
@@ -151,141 +151,172 @@ public class CacheStatisticsModel implements Serializable {
 		return remark;
 	}
 
-	public int getTimes() {
-		return this.hit + this.failure;
+	public int getHit() {
+		return this.hit == -1 ? 0 : this.hit;
 	}
 
-	public int getHit() {
-		return this.hit;
+	public String printHit() {
+		return String.valueOf(getHit());
 	}
 
 	public void incrementHit() {
-		this.hit++;
+		this.hit = getHit() + 1;
 	}
 
 	public void incrementHit(int hit) {
-		this.hit += hit;
+		this.hit = getHit() + hit;
 	}
 
 	public long getAvgOfHitSpend() {
-		return avgOfHitSpend;
+		return this.avgOfHitSpend == -1L ? 0L : this.avgOfHitSpend;
+	}
+
+	public String printAvgOfHitSpend() {
+		return String.valueOf(getAvgOfHitSpend());
 	}
 
 	public void calculateAvgOfHitSpend(long avgOfHitSpend) {
-		this.avgOfHitSpend = new BigDecimal(this.avgOfHitSpend).add(new BigDecimal(avgOfHitSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
+		this.avgOfHitSpend = new BigDecimal(getAvgOfHitSpend()).add(new BigDecimal(avgOfHitSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
 	}
 
 	public long getMinHitSpend() {
-		return minHitSpend;
+		return this.minHitSpend == -1L ? 0L : this.minHitSpend;
+	}
+
+	public String printMinHitSpend() {
+		return String.valueOf(getMinHitSpend());
 	}
 
 	public void setMinHitSpend(long minHitSpend, long timeOfMinHitSpend, String args) {
-		if (this.minHitSpend == 0L || this.minHitSpend > minHitSpend) {
+		if (getMinHitSpend() == 0L || getMinHitSpend() > minHitSpend) {
 			this.minHitSpend = minHitSpend;
 			this.timeOfMinHitSpend = timeOfMinHitSpend;
 			this.argsOfMinHitSpend = args;
 		}
 	}
 
-	public String getArgsOfMinHitSpend() {
-		return argsOfMinHitSpend;
-	}
-
 	public String printTimeOfMinHitSpend() {
-		if (this.timeOfMinHitSpend == 0L) {
+		if (this.timeOfMinHitSpend == -1L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(timeOfMinHitSpend));
 	}
 
+	public String printArgsOfMinHitSpend() {
+		return Objects.toString(argsOfMinHitSpend);
+	}
+
 	public long getMaxHitSpend() {
-		return maxHitSpend;
+		return this.maxHitSpend == -1L ? 0L : this.maxHitSpend;
+	}
+
+	public String printMaxHitSpend() {
+		return String.valueOf(getMaxHitSpend());
 	}
 
 	public void setMaxHitSpend(long maxHitSpend, long timeOfMaxHitSpend, String args) {
-		if (this.maxHitSpend < maxHitSpend) {
+		if (getMaxHitSpend() < maxHitSpend) {
 			this.maxHitSpend = maxHitSpend;
 			this.timeOfMaxHitSpend = timeOfMaxHitSpend;
 			this.argsOfMaxHitSpend = args;
 		}
 	}
 
-	public String getArgsOfMaxHitSpend() {
-		return argsOfMaxHitSpend;
-	}
-
 	public String printTimeOfMaxHitSpend() {
-		if (this.timeOfMaxHitSpend == 0L) {
+		if (this.timeOfMaxHitSpend == -1L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxHitSpend));
 	}
 
+	public String printArgsOfMaxHitSpend() {
+		return Objects.toString(argsOfMaxHitSpend);
+	}
 
 	public int getFailure() {
-		return failure;
+		return this.failure == -1 ? 0 : this.failure;
+	}
+
+	public String printFailure() {
+		return String.valueOf(getFailure());
 	}
 
 	public void incrementFailure() {
-		this.failure++;
+		this.failure = getFailure() + 1;
 	}
 
 	public void incrementFailure(int failure) {
-		this.failure += failure;
+		this.failure = getFailure() + failure;
 	}
 
 	public long getAvgOfFailureSpend() {
-		return avgOfFailureSpend;
+		return this.avgOfFailureSpend == -1L ? 0L : this.avgOfFailureSpend;
+	}
+
+	public String printAvgOfFailureSpend() {
+		return String.valueOf(getAvgOfFailureSpend());
 	}
 
 	public void calculateAvgOfFailureSpend(long avgOfFailureSpend) {
-		this.avgOfFailureSpend = new BigDecimal(this.avgOfFailureSpend).add(new BigDecimal(avgOfFailureSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
+		this.avgOfFailureSpend = new BigDecimal(getAvgOfFailureSpend()).add(new BigDecimal(avgOfFailureSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
 	}
 
 	public long getMinFailureSpend() {
-		return minFailureSpend;
+		return this.minFailureSpend == -1L ? 0 : this.minFailureSpend;
+	}
+
+	public String printMinFailureSpend() {
+		return String.valueOf(getMinFailureSpend());
 	}
 
 	public void setMinFailureSpend(long minFailureSpend, long timeOfMinFailureSpend, String args) {
-		if (this.minFailureSpend == 0L || this.minFailureSpend > minFailureSpend) {
+		if (getMinFailureSpend() == 0L || getMinFailureSpend() > minFailureSpend) {
 			this.minFailureSpend = minFailureSpend;
 			this.timeOfMinFailureSpend = timeOfMinFailureSpend;
 			this.argsOfMinFailureSpend = args;
 		}
 	}
 
-	public String getArgsOfMinFailureSpend() {
-		return argsOfMinFailureSpend;
-	}
-
 	public String printTimeOfMinFailureSpend() {
-		if (this.timeOfMinFailureSpend == 0L) {
+		if (this.timeOfMinFailureSpend == -1L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMinFailureSpend));
 	}
 
+	public String printArgsOfMinFailureSpend() {
+		return Objects.toString(argsOfMinFailureSpend);
+	}
+
 	public long getMaxFailureSpend() {
-		return maxFailureSpend;
+		return this.maxFailureSpend == -1L ? 0L : this.maxFailureSpend;
+	}
+
+	public String printMaxFailureSpend() {
+		return String.valueOf(getMaxFailureSpend());
 	}
 
 	public void setMaxFailureSpend(long maxFailureSpend, long timeOfMaxFailureSpend, String args) {
-		if (this.maxFailureSpend < maxFailureSpend) {
+		if (getMaxFailureSpend() < maxFailureSpend) {
 			this.maxFailureSpend = maxFailureSpend;
 			this.timeOfMaxFailureSpend = timeOfMaxFailureSpend;
 			this.argsOfMaxFailureSpend = args;
 		}
 	}
 
-	public String getArgsOfMaxFailureSpend() {
-		return argsOfMaxFailureSpend;
-	}
-
 	public String printTimeOfMaxFailureSpend() {
-		if (this.timeOfMaxFailureSpend == 0L) {
+		if (this.timeOfMaxFailureSpend == -1L) {
 			return "";
 		}
 		return outPrintSimpleDateFormat.format(new Date(this.timeOfMaxFailureSpend));
+	}
+
+	public String printArgsOfMaxFailureSpend() {
+		return Objects.toString(argsOfMaxFailureSpend);
+	}
+
+	public int getTimes() {
+		return getHit() + getFailure();
 	}
 
 	@Override
@@ -295,7 +326,7 @@ public class CacheStatisticsModel implements Serializable {
 				", methodSignatureHashCode=" + methodSignatureHashCode +
 				", id='" + id + '\'' +
 				", remark='" + remark + '\'' +
-				", hit=" + hit +
+				", hit=" + printHit() +
 				", avgOfHitSpend=" + avgOfHitSpend +
 				", minHitSpend=" + minHitSpend +
 				", timeOfMinHitSpend=" + timeOfMinHitSpend +
