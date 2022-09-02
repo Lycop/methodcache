@@ -189,7 +189,7 @@ public interface DataHelper {
 		Map<String, Object> cacheInfo = new HashMap<>();
 		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
 		cacheInfo.put("args", cacheDataModel.getArgs());
-		cacheInfo.put("data", cacheDataModel.getData());
+		cacheInfo.put("data", Objects.toString(cacheDataModel.getData()));
 		cacheInfo.put("cacheTime", cacheDataModel.getFormatCacheTime());
 		cacheInfo.put("expireTime", cacheDataModel.getFormatExpireTime());
 		cacheInfoList.add(cacheInfo);
