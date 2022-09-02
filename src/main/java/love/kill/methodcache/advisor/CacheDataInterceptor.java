@@ -43,37 +43,28 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		Object[] args = methodInvocation.getArguments(); //方法入参实体
 		CacheData cacheData = method.getAnnotation(CacheData.class);
 
-		try {
-			boolean refresh = cacheData.refresh(); // 刷新数据
-			long expiration = cacheData.expiration(); // 数据过期时间，毫秒
-			long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
-			CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
-			boolean nullable = cacheData.nullable(); // 空返回
+		boolean refresh = cacheData.refresh(); // 刷新数据
+		long expiration = cacheData.expiration(); // 数据过期时间，毫秒
+		long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
+		CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
+		boolean nullable = cacheData.nullable(); // 空返回
 
-			return dataHelper.getData(method, args, refresh, new DataHelper.ActualDataFunctional() {
-				@Autowired
-				public Object getActualData() throws Throwable {
-					try {
-						return methodInvocation.proceed();
-					} catch (Throwable throwable) {
-						throwable.printStackTrace();
-						throw throwable;
-					}
+		return dataHelper.getData(method, args, refresh, new DataHelper.ActualDataFunctional() {
+			@Autowired
+			public Object getActualData() throws Throwable {
+				try {
+					return methodInvocation.proceed();
+				} catch (Throwable throwable) {
+					throwable.printStackTrace();
+					throw throwable;
 				}
+			}
 
-				@Override
-				public long getExpirationTime() {
-					return expirationTime(expiration, behindExpiration, capitalExpiration);
-				}
-			}, cacheData.id(), cacheData.remark(), nullable);
-
-
-		} catch (Exception e) {
-			logger.error("数据缓存出现异常：" + e.getMessage());
-			e.printStackTrace();
-		}
-
-		return methodInvocation.proceed();
+			@Override
+			public long getExpirationTime() {
+				return expirationTime(expiration, behindExpiration, capitalExpiration);
+			}
+		}, cacheData.id(), cacheData.remark(), nullable);
 	}
 
 

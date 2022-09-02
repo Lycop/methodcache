@@ -159,7 +159,7 @@ public class MemoryDataHelper implements DataHelper {
 
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) {
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Throwable {
 
 		String applicationName; // 应用名
 		if (StringUtils.isEmpty(applicationName = methodcacheProperties.getName())) {
@@ -251,9 +251,9 @@ public class MemoryDataHelper implements DataHelper {
 				throwable.printStackTrace();
 				logger.info("\n ************* CacheData *************" +
 							"\n ** -------- 获取数据发生异常 ------- **" +
-							"\n ** 异常信息：" + throwable.getMessage() +
+							"\n ** 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
 							"\n *************************************");
-				return null;
+				throw throwable;
 			} finally {
 				cacheDataLock.unlock();
 			}
@@ -289,7 +289,7 @@ public class MemoryDataHelper implements DataHelper {
 					throwable.printStackTrace();
 					logger.info("\n ************* CacheData *************" +
 								"\n ** ---- 异步更新数据至内存发生异常 --- **" +
-								"\n 异常信息：" + throwable.getMessage() +
+								"\n 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
 								"\n *************************************");
 				} finally {
 					cacheDataLock.unlock();
@@ -526,7 +526,7 @@ public class MemoryDataHelper implements DataHelper {
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.error("\n ************* CacheData *************" +
-					"\n ** 移除数据出现异常：" + e.getMessage() +
+					"\n ** 移除数据出现异常：" + e.getMessage() + "\n" + printStackTrace(e.getStackTrace()) +
 					"\n *************************************");
 		}
 	}
@@ -775,6 +775,22 @@ public class MemoryDataHelper implements DataHelper {
 	private void log(String info) {
 		if (methodcacheProperties.isEnableLog()) {
 			logger.info(info);
+		}
+	}
+
+	private static String printStackTrace(Object[] a) {
+		if (a == null)
+			return "";
+
+		int iMax = a.length - 1;
+		if (iMax == -1)
+			return "";
+
+		StringBuilder b = new StringBuilder();
+		for (int i = 0; ; i++) {
+			b.append(String.valueOf(a[i])).append("\n");
+			if (i == iMax)
+				return b.toString();
 		}
 	}
 

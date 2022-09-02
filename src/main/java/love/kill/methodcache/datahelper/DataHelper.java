@@ -63,7 +63,7 @@ public interface DataHelper {
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
 	 */
-	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Exception;
+	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Throwable;
 
 	/**
 	 * 请求模型

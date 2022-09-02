@@ -6,18 +6,15 @@
 	<groupId>love.kill</groupId>
 	<artifactId>methodcache-spring-boot-starter</artifactId>
 	<version>2.0.1</version>
-
 	<name>methodcache-spring-boot-starter</name>
 	<description>Method cache project for Spring Boot</description>
 	<url>https://github.com/Lycop/methodcache</url>
-
 	<licenses>
 		<license>
 			<name>The Apache Software License, Version 2.0</name>
 			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
 		</license>
 	</licenses>
-
 	<developers>
 		<developer>
 			<id>Lycop</id>
@@ -30,48 +27,38 @@
 			<timezone>+8</timezone>
 		</developer>
 	</developers>
-
 	<scm>
 		<url>https://github.com/Lycop/methodcache</url>
 		<developerConnection>https://github.com/Lycop/methodcache.git</developerConnection>
 		<connection>https://github.com/Lycop/methodcache.git</connection>
 	</scm>
-
 	<properties>
-		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<java.version>1.8</java.version>
-		<maven.compiler.source>${java.version}</maven.compiler.source>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 	</properties>
-
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>2.2.10.RELEASE</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-autoconfigure</artifactId>
-			<version>2.2.10.RELEASE</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-aop</artifactId>
-			<version>5.2.9.RELEASE</version>
 			<scope>compile</scope>
 		</dependency>
-
-		<dependency>
-			<groupId>org.aspectj</groupId>
-			<artifactId>aspectjweaver</artifactId>
-			<version>1.9.6</version>
-			<scope>compile</scope>
-		</dependency>
-
-		<!-- redis -->
 		<dependency>
 			<groupId>org.springframework.data</groupId>
 			<artifactId>spring-data-redis</artifactId>
-			<version>2.2.10.RELEASE</version>
 			<scope>compile</scope>
 			<exclusions>
 				<exclusion>
@@ -81,31 +68,22 @@
 			</exclusions>
 		</dependency>
 		<dependency>
-			<groupId>io.lettuce</groupId>
-			<artifactId>lettuce-core</artifactId>
-			<version>5.2.2.RELEASE</version>
-			<scope>compile</scope>
-		</dependency>
-
-		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-web</artifactId>
-			<version>5.2.9.RELEASE</version>
 			<scope>compile</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>com.alibaba</groupId>
 			<artifactId>fastjson</artifactId>
 			<version>1.2.73</version>
+			<scope>compile</scope>
 		</dependency>
-
 		<dependency>
 			<groupId>com.carrotsearch</groupId>
 			<artifactId>java-sizeof</artifactId>
 			<version>0.0.5</version>
+			<scope>compile</scope>
 		</dependency>
-
 	</dependencies>
 
 	<profiles>
