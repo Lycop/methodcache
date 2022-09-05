@@ -121,6 +121,10 @@ public class Statistics {
 			statisticsInfo.put("maxFailureSpend", statisticsModel.printMaxFailureSpend());
 			statisticsInfo.put("timeOfMaxFailureSpend", statisticsModel.printTimeOfMaxFailureSpend());
 			statisticsInfo.put("argsOfMaxFailureSpend", statisticsModel.printArgsOfMaxFailureSpend());
+			statisticsInfo.put("exception", statisticsModel.printException());
+			statisticsInfo.put("argsOfLastException", statisticsModel.printArgsOfLastException());
+			statisticsInfo.put("msgOfLastException", statisticsModel.printMsgOfLastException());
+			statisticsInfo.put("timeOfLastException", statisticsModel.printTimeOfLastException());
 			targetMap.put(methodSignature, statisticsInfo);
 		}
 

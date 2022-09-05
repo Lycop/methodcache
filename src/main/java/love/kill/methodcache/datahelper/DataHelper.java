@@ -234,12 +234,18 @@ public interface DataHelper {
 		}
 
 		boolean hit = cacheStatisticsNode.isHit(); // 命中
+		boolean invokeException = cacheStatisticsNode.isInvokeException(); // 请求异常
+		String invokeExceptionMSG = cacheStatisticsNode.getInvokeExceptionMSG(); // 请求异常信息
 		long startTimestamp = cacheStatisticsNode.getStartTimestamp(); // 请求开始时间戳
 		long endTimestamp = cacheStatisticsNode.getEndTimestamp(); // 请求结束时间戳
 		long spend = endTimestamp - startTimestamp; // 请求耗时
 		String args = cacheStatisticsNode.getArgs(); // 请求入参
 
-		if (hit) {
+		if (invokeException) {
+			// 异常
+			cacheStatisticsModel.incrementTimesOfException(args, invokeExceptionMSG, startTimestamp);
+
+		} else if (hit) {
 			// 命中
 			cacheStatisticsModel.incrementHit(spend);
 			cacheStatisticsModel.setMinHitSpend(spend, startTimestamp, args);
@@ -266,13 +272,16 @@ public interface DataHelper {
 	 * @param id                      缓存ID
 	 * @param remark                  缓存备注
 	 * @param hit                     命中
+	 * @param invokeException         请求异常
 	 * @param startTimestamp          记录开始时间
 	 */
 	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-								  int cacheHashCode, String id, String remark, boolean hit, long startTimestamp) {
+								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String invokeExceptionMSG,
+								  long startTimestamp) {
 		recordExecutorService.execute(() -> {
 			try {
-				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, startTimestamp, new Date().getTime()));
+				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode,
+						cacheHashCode, id, remark, hit, invokeException, invokeExceptionMSG, startTimestamp, new Date().getTime()));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -379,6 +388,16 @@ public interface DataHelper {
 		private boolean hit;
 
 		/**
+		 * 请求异常
+		 */
+		private boolean invokeException;
+
+		/**
+		 * 请求异常信息
+		 */
+		private String invokeExceptionMSG;
+
+		/**
 		 * 请求开始时间
 		 */
 		private long startTimestamp;
@@ -388,7 +407,9 @@ public interface DataHelper {
 		 */
 		private long endTimestamp;
 
-		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, String id, String remark, boolean hit, long startTimestamp, long endTimestamp) {
+		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
+								   int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String  invokeExceptionMSG,
+								   long startTimestamp, long endTimestamp) {
 			this.cacheKey = cacheKey;
 			this.methodSignature = methodSignature;
 			this.methodSignatureHashCode = methodSignatureHashCode;
@@ -398,6 +419,8 @@ public interface DataHelper {
 			this.id = id;
 			this.remark = remark;
 			this.hit = hit;
+			this.invokeException = invokeException;
+			this.invokeExceptionMSG = invokeExceptionMSG;
 			this.startTimestamp = startTimestamp;
 			this.endTimestamp = endTimestamp;
 		}
@@ -474,8 +497,16 @@ public interface DataHelper {
 			this.hit = hit;
 		}
 
+		public boolean isInvokeException() {
+			return invokeException;
+		}
+
 		public long getStartTimestamp() {
 			return startTimestamp;
+		}
+
+		public String getInvokeExceptionMSG() {
+			return invokeExceptionMSG;
 		}
 
 		public void setStartTimestamp(long startTimestamp) {

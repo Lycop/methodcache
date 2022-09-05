@@ -174,31 +174,32 @@ public class RedisUtil {
 	/**
 	 * 加锁
 	 *
-	 * @param key   键
-	 * @param block 阻塞方式
+	 * @param key 键
+	 * @return 加锁成功
+	 */
+	public boolean lock(String key, int expireTime) {
+		return RedisLockUtil.lock(redisTemplate, key, getLockValue(key), expireTime);
+	}
+
+	/**
+	 * 加锁
+	 *
+	 * @param key        键
+	 * @param block      阻塞方式
+	 * @param expireTime 过期时间
 	 * @return 加锁成功
 	 * @throws InterruptedException 中断信号
 	 */
-	public boolean lock(String key, boolean block) throws InterruptedException {
+	public boolean lock(String key, int expireTime, boolean block) throws InterruptedException {
 		if (block) {
-			while (!lock(key)) {
+			while (!lock(key, expireTime)) {
 				if (Thread.currentThread().isInterrupted()) {
 					throw new InterruptedException();
 				}
 			}
 			return true;
 		}
-		return lock(key);
-	}
-
-	/**
-	 * 加锁
-	 *
-	 * @param key 键
-	 * @return 加锁成功
-	 */
-	public boolean lock(String key) {
-		return RedisLockUtil.lock(redisTemplate, key, getLockValue(key), 30 * 1000);
+		return lock(key, expireTime);
 	}
 
 	/**

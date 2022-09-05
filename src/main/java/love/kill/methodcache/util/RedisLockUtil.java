@@ -65,7 +65,7 @@ public class RedisLockUtil {
 	 * @return 加锁结果。成功，true；失败，false
 	 */
 	@SuppressWarnings("unchecked")
-	static boolean lock(RedisTemplate redisTemplate, String key, String value, long expireTime) {
+	static boolean lock(RedisTemplate redisTemplate, String key, String value, int expireTime) {
 
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(reentrantLockScript);

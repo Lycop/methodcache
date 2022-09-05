@@ -122,6 +122,26 @@ public class CacheStatisticsModel implements Serializable {
 	 */
 	private String argsOfMaxFailureSpend = "";
 
+	/**
+	 * 异常次数
+	 */
+	private volatile int exception = -1;
+
+	/**
+	 * 最后一次异常发生时间(时间戳，毫秒)
+	 */
+	private long timeOfLastException = -1L;
+
+	/**
+	 * 最后一次发生异常的入参
+	 */
+	private String argsOfLastException = "";
+
+	/**
+	 * 最后一次发生异常的信息
+	 */
+	private String msgOfLastException = "";
+
 
 	public CacheStatisticsModel(String cacheKey, String methodSignature, int methodSignatureHashCode, String id, String remark) {
 		this.cacheKey = cacheKey;
@@ -346,6 +366,37 @@ public class CacheStatisticsModel implements Serializable {
 		return String.valueOf(getTimes());
 	}
 
+	public int getException() {
+		return this.exception == -1 ? 0 : this.exception;
+	}
+
+	public String printException() {
+		return String.valueOf(getException());
+	}
+
+
+	public void incrementTimesOfException(String args, String msg, long time) {
+		this.exception = getException() + 1;
+		this.argsOfLastException = args;
+		this.msgOfLastException = msg;
+		this.timeOfLastException = time;
+	}
+
+	public String printArgsOfLastException() {
+		return Objects.toString(this.argsOfLastException);
+	}
+
+	public String printMsgOfLastException() {
+		return this.msgOfLastException;
+	}
+
+	public String printTimeOfLastException() {
+		if (this.timeOfLastException == -1L) {
+			return "";
+		}
+		return outPrintSimpleDateFormat.format(new Date(this.timeOfLastException));
+	}
+
 	@Override
 	public String toString() {
 		return "CacheStatisticsModel{" +
@@ -367,6 +418,10 @@ public class CacheStatisticsModel implements Serializable {
 				", timeOfMinFailureSpend=" + timeOfMinFailureSpend +
 				", maxFailureSpend=" + maxFailureSpend +
 				", timeOfMaxFailureSpend=" + timeOfMaxFailureSpend +
+				", exception=" + exception +
+				", argsOfLastException=" + argsOfLastException +
+				", msgOfLastException=" + msgOfLastException +
+				", timeOfLastException=" + timeOfLastException +
 				'}';
 	}
 }

@@ -242,7 +242,7 @@ public class MemoryDataHelper implements DataHelper {
 
 					}
 					if (methodcacheProperties.isEnableStatistics()) {
-						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, false, "", startTime);
 					}
 					return data;
 				}
@@ -252,55 +252,25 @@ public class MemoryDataHelper implements DataHelper {
 							"\n ** -------- 获取数据发生异常 ------- **" +
 							"\n ** 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
 							"\n *************************************");
+
+				if (methodcacheProperties.isEnableStatistics()) {
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, true, throwable.getMessage(), startTime);
+				}
+
 				throw throwable;
 			} finally {
 				cacheDataLock.unlock();
 			}
 		}
 
-
 		if (refreshData) {
-
-			final String finalId = id;
-
-			// 刷新数据
-			executorService.execute(() -> {
-				try {
-					cacheDataLock.lock();
-					Object data = actualDataFunctional.getActualData();
-					if (data != null || nullable) {
-						long expirationTime = actualDataFunctional.getExpirationTime();
-						log(String.format(	"\n ************* CacheData *************" +
-											"\n ** --------- 刷新缓存至内存 -------- **" +
-											"\n ** 方法签名：%s" +
-											"\n ** 方法入参：%s" +
-											"\n ** 缓存数据：%s" +
-											"\n ** 过期时间：%s" +
-											"\n *************************************",
-								method,
-								Arrays.toString(args),
-								data,
-								formatDate(expirationTime)));
-
-						setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, finalId, remark);
-					}
-				} catch (Throwable throwable) {
-					throwable.printStackTrace();
-					logger.info("\n ************* CacheData *************" +
-								"\n ** ---- 异步更新数据至内存发生异常 --- **" +
-								"\n 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
-								"\n *************************************");
-				} finally {
-					cacheDataLock.unlock();
-				}
-			});
+			refreshData(cacheDataLock, actualDataFunctional, nullable, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
 		}
+
 		if (methodcacheProperties.isEnableStatistics()) {
-			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, startTime);
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, false, "", startTime);
 		}
 		return cacheDataModel.getData();
-
-
 	}
 
 	@Override
@@ -440,6 +410,56 @@ public class MemoryDataHelper implements DataHelper {
 	}
 
 	/****************************************************************** 私有方法 start ******************************************************************/
+
+	/**
+	 * 刷新数据
+	 *
+	 * @param cacheDataLock            锁
+	 * @param actualDataFunctional    真实数据请求
+	 * @param nullable                返回值允许为空
+	 * @param methodSignature         方法签名
+	 * @param methodSignatureHashCode 方法签名哈希值
+	 * @param argsInfo                方法参数信息
+	 * @param argsHashCode            方法参数哈希
+	 * @param id                      缓存ID
+	 * @param remark                  缓存备注
+	 */
+	private void refreshData(ReentrantLock cacheDataLock, ActualDataFunctional actualDataFunctional, boolean nullable, String methodSignature, int methodSignatureHashCode, String argsInfo, int argsHashCode, int cacheHashCode, String id, String remark) {
+
+		final String finalId = id;
+
+		// 刷新数据
+		executorService.execute(() -> {
+			try {
+				cacheDataLock.lock();
+				Object data = actualDataFunctional.getActualData();
+				if (data != null || nullable) {
+					long expirationTime = actualDataFunctional.getExpirationTime();
+					log(String.format("	\n ************* CacheData *************" +
+										"\n ** --------- 刷新缓存至内存 -------- **" +
+										"\n ** 方法签名：%s" +
+										"\n ** 方法入参：%s" +
+										"\n ** 缓存数据：%s" +
+										"\n ** 过期时间：%s" +
+										"\n *************************************",
+							methodSignature,
+							argsInfo,
+							data,
+							formatDate(expirationTime)));
+
+					setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, finalId, remark);
+				}
+			} catch (Throwable throwable) {
+				throwable.printStackTrace();
+				logger.info("\n ************* CacheData *************" +
+							"\n ** ---- 异步更新数据至内存发生异常 --- **" +
+							"\n 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
+							"\n *************************************");
+			} finally {
+				cacheDataLock.unlock();
+			}
+		});
+	}
 
 	/**
 	 * 从内存获取缓存数据
