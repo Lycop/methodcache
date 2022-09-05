@@ -101,8 +101,7 @@ public class RedisDataHelper implements DataHelper {
 		String redisDataLockKey = getIntactDataLockKey(cacheKey);
 		long startTime = new Date().getTime();
 		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false);
-		boolean hit = (cacheDataModel != null);
-
+		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 		log(String.format(	"\n ************* CacheData *************" +
 							"\n ** ------- 从Redis获取缓存 -------- **" +
 							"\n ** 方法签名：%s" +
@@ -115,12 +114,12 @@ public class RedisDataHelper implements DataHelper {
 				hit ? "是" : "否",
 				hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
-		if (!hit || cacheDataModel.isExpired()) {
+		if (!hit) {
 			try {
 				// 缓存未命中或数据已过期，加锁再次尝试获取
 				redisUtil.lock(redisDataLockKey, true);
 				cacheDataModel = getDataFromRedis(cacheKey, false);
-				hit = (cacheDataModel != null);
+				hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 				log(String.format(	"\n ************* CacheData *************" +
 									"\n ** ------ 从Redis获取缓存(加锁) ---- **" +
 									"\n ** 方法签名：%s" +
@@ -133,7 +132,7 @@ public class RedisDataHelper implements DataHelper {
 						hit ? "是" : "否",
 						hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
-				if (!hit || cacheDataModel.isExpired()) {
+				if (!hit) {
 					// 发起实际请求
 					Object data = actualDataFunctional.getActualData();
 					log(String.format(	"\n ************* CacheData *************" +
@@ -145,6 +144,8 @@ public class RedisDataHelper implements DataHelper {
 							methodSignature,
 							argsInfo,
 							data));
+
+
 
 					if (data != null || nullable) {
 						long expirationTime = actualDataFunctional.getExpirationTime();

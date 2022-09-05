@@ -178,8 +178,7 @@ public class MemoryDataHelper implements DataHelper {
 		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id);
 		long startTime = new Date().getTime();
 		CacheDataModel cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode);
-		boolean hit = (cacheDataModel != null);
-
+		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 		log(String.format(	"\n ************* CacheData *************" +
 							"\n **--------- 从内存中获取缓存 ------- **" +
 							"\n ** 方法签名：%s" +
@@ -193,12 +192,12 @@ public class MemoryDataHelper implements DataHelper {
 				hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
 
-		if (!hit || cacheDataModel.isExpired()) {
+		if (!hit) {
 			try {
 				// 加锁再次获取
 				cacheDataLock.lock();
 				cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode);
-				hit = (cacheDataModel != null);
+				hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 				log(String.format(	"\n ************* CacheData *************" +
 									"\n **------- 从内存获取缓存(加锁) ----- **" +
 									"\n ** 方法签名：%s" +
@@ -212,7 +211,7 @@ public class MemoryDataHelper implements DataHelper {
 						hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
 
-				if (!hit || cacheDataModel.isExpired()) {
+				if (!hit) {
 					// 发起实际请求
 					Object data = actualDataFunctional.getActualData();
 					log(String.format(	"\n ************* CacheData *************" +
