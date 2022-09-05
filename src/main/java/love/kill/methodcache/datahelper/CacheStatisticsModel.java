@@ -172,11 +172,22 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printAvgOfHitSpend() {
+		if (getAvgOfHitSpend() == 0L) {
+			return "";
+		}
 		return String.valueOf(getAvgOfHitSpend());
 	}
 
+	public void setAvgOfHitSpend(long avgOfHitSpend) {
+		this.avgOfHitSpend = avgOfHitSpend;
+	}
+
 	public void calculateAvgOfHitSpend(long avgOfHitSpend) {
-		this.avgOfHitSpend = new BigDecimal(getAvgOfHitSpend()).add(new BigDecimal(avgOfHitSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
+		if (getAvgOfHitSpend() == 0L) {
+			setAvgOfHitSpend(avgOfHitSpend);
+		} else {
+			setAvgOfHitSpend(new BigDecimal(getAvgOfHitSpend()).add(new BigDecimal(avgOfHitSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue());
+		}
 	}
 
 	public long getMinHitSpend() {
@@ -184,6 +195,9 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printMinHitSpend() {
+		if (getMinHitSpend() == 0L) {
+			return "";
+		}
 		return String.valueOf(getMinHitSpend());
 	}
 
@@ -211,6 +225,9 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printMaxHitSpend() {
+		if (getMaxHitSpend() == 0L) {
+			return "";
+		}
 		return String.valueOf(getMaxHitSpend());
 	}
 
@@ -257,8 +274,16 @@ public class CacheStatisticsModel implements Serializable {
 		return String.valueOf(getAvgOfFailureSpend());
 	}
 
+	public void setAvgOfFailureSpend(long avgOfFailureSpend) {
+		this.avgOfFailureSpend = avgOfFailureSpend;
+	}
+
 	public void calculateAvgOfFailureSpend(long avgOfFailureSpend) {
-		this.avgOfFailureSpend = new BigDecimal(getAvgOfFailureSpend()).add(new BigDecimal(avgOfFailureSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue();
+		if (getAvgOfFailureSpend() == 0L) {
+			setAvgOfFailureSpend(avgOfFailureSpend);
+		} else {
+			setAvgOfFailureSpend(new BigDecimal(getAvgOfFailureSpend()).add(new BigDecimal(avgOfFailureSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue());
+		}
 	}
 
 	public long getMinFailureSpend() {
@@ -266,6 +291,9 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printMinFailureSpend() {
+		if(getMinFailureSpend() == 0L){
+			return "";
+		}
 		return String.valueOf(getMinFailureSpend());
 	}
 
