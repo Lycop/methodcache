@@ -45,7 +45,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 命中次数
 	 */
-	private int hit = -1;
+	private volatile int hit = -1; // 避免指令重排
 
 	/**
 	 * 命中平均耗时
@@ -85,7 +85,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 未命中次数
 	 */
-	private int failure = -1;
+	private volatile int failure = -1; // 避免指令重排
 
 	/**
 	 * 未命中平均耗时
@@ -188,7 +188,7 @@ public class CacheStatisticsModel implements Serializable {
 		} else {
 			setAvgOfHitSpend(new BigDecimal(this.avgOfHitSpend)
 					.add(new BigDecimal(avgOfHitSpend))
-					.divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP)
+					.divide(new BigDecimal(getHit()), 0, BigDecimal.ROUND_HALF_UP)
 					.longValue());
 		}
 	}
@@ -282,7 +282,7 @@ public class CacheStatisticsModel implements Serializable {
 		} else {
 			setAvgOfFailureSpend(new BigDecimal(this.avgOfFailureSpend)
 					.add(new BigDecimal(avgOfFailureSpend))
-					.divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP)
+					.divide(new BigDecimal(getFailure()), 0, BigDecimal.ROUND_HALF_UP)
 					.longValue());
 		}
 	}
