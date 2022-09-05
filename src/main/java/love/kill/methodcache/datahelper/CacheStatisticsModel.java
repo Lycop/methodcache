@@ -160,11 +160,11 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void incrementHit() {
-		this.hit += 1;
+		this.hit = getHit() + 1;
 	}
 
 	public void incrementHit(int hit) {
-		this.hit += hit;
+		this.hit = getHit() + hit;
 	}
 
 	public long getAvgOfHitSpend() {
@@ -254,11 +254,11 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void incrementFailure() {
-		this.failure += 1;
+		this.failure = getFailure() + 1;
 	}
 
 	public void incrementFailure(int failure) {
-		this.failure += failure;
+		this.failure = getFailure() + failure;
 	}
 
 	public long getAvgOfFailureSpend() {
