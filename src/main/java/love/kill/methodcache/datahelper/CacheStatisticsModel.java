@@ -140,7 +140,7 @@ public class CacheStatisticsModel implements Serializable {
 	/**
 	 * 最后一次发生异常的信息
 	 */
-	private String msgOfLastException = "";
+	private String stackTraceOfLastException = "";
 
 
 	public CacheStatisticsModel(String cacheKey, String methodSignature, int methodSignatureHashCode, String id, String remark) {
@@ -375,10 +375,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 
-	public void incrementTimesOfException(String args, String msg, long time) {
+	public void incrementTimesOfException(String args, String stackTrace, long time) {
 		this.exception = getException() + 1;
 		this.argsOfLastException = args;
-		this.msgOfLastException = msg;
+		this.stackTraceOfLastException = stackTrace;
 		this.timeOfLastException = time;
 	}
 
@@ -386,8 +386,8 @@ public class CacheStatisticsModel implements Serializable {
 		return Objects.toString(this.argsOfLastException);
 	}
 
-	public String printMsgOfLastException() {
-		return this.msgOfLastException;
+	public String printStackTraceOfLastException() {
+		return this.stackTraceOfLastException;
 	}
 
 	public String printTimeOfLastException() {
@@ -420,7 +420,7 @@ public class CacheStatisticsModel implements Serializable {
 				", timeOfMaxFailureSpend=" + timeOfMaxFailureSpend +
 				", exception=" + exception +
 				", argsOfLastException=" + argsOfLastException +
-				", msgOfLastException=" + msgOfLastException +
+				", stackTraceOfLastException=" + stackTraceOfLastException +
 				", timeOfLastException=" + timeOfLastException +
 				'}';
 	}

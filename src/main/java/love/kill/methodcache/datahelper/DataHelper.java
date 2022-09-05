@@ -235,7 +235,7 @@ public interface DataHelper {
 
 		boolean hit = cacheStatisticsNode.isHit(); // 命中
 		boolean invokeException = cacheStatisticsNode.isInvokeException(); // 请求异常
-		String invokeExceptionMSG = cacheStatisticsNode.getInvokeExceptionMSG(); // 请求异常信息
+		String stackTraceOfException = cacheStatisticsNode.getStackTraceOfException(); // 异常栈
 		long startTimestamp = cacheStatisticsNode.getStartTimestamp(); // 请求开始时间戳
 		long endTimestamp = cacheStatisticsNode.getEndTimestamp(); // 请求结束时间戳
 		long spend = endTimestamp - startTimestamp; // 请求耗时
@@ -243,7 +243,7 @@ public interface DataHelper {
 
 		if (invokeException) {
 			// 异常
-			cacheStatisticsModel.incrementTimesOfException(args, invokeExceptionMSG, startTimestamp);
+			cacheStatisticsModel.incrementTimesOfException(args, stackTraceOfException, startTimestamp);
 
 		} else if (hit) {
 			// 命中
@@ -273,15 +273,16 @@ public interface DataHelper {
 	 * @param remark                  缓存备注
 	 * @param hit                     命中
 	 * @param invokeException         请求异常
+	 * @param stackTraceOfException   异常栈
 	 * @param startTimestamp          记录开始时间
 	 */
 	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String invokeExceptionMSG,
+								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
 								  long startTimestamp) {
 		recordExecutorService.execute(() -> {
 			try {
 				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode,
-						cacheHashCode, id, remark, hit, invokeException, invokeExceptionMSG, startTimestamp, new Date().getTime()));
+						cacheHashCode, id, remark, hit, invokeException, stackTraceOfException, startTimestamp, new Date().getTime()));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -334,6 +335,32 @@ public interface DataHelper {
 			e.printStackTrace();
 			return String.valueOf(timeStamp);
 		}
+	}
+
+	/**
+	 * 输出异常栈
+	 * */
+	default String printStackTrace(Object[] a) {
+		if (a == null)
+			return "";
+
+		int iMax = a.length - 1;
+		if (iMax == -1)
+			return "";
+
+		StringBuilder b = new StringBuilder();
+		for (int i = 0; ; i++) {
+			b.append(String.valueOf(a[i])).append("\n");
+			if (i == iMax)
+				return b.toString();
+		}
+	}
+
+	/**
+	 * 输出异常栈
+	 * */
+	default String printStackTrace(Throwable throwable, String uuid) {
+		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" + Arrays.toString(throwable.getStackTrace()) + "]";
 	}
 
 
@@ -395,7 +422,7 @@ public interface DataHelper {
 		/**
 		 * 请求异常信息
 		 */
-		private String invokeExceptionMSG;
+		private String stackTraceOfException;
 
 		/**
 		 * 请求开始时间
@@ -408,7 +435,7 @@ public interface DataHelper {
 		private long endTimestamp;
 
 		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-								   int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String  invokeExceptionMSG,
+								   int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
 								   long startTimestamp, long endTimestamp) {
 			this.cacheKey = cacheKey;
 			this.methodSignature = methodSignature;
@@ -420,7 +447,7 @@ public interface DataHelper {
 			this.remark = remark;
 			this.hit = hit;
 			this.invokeException = invokeException;
-			this.invokeExceptionMSG = invokeExceptionMSG;
+			this.stackTraceOfException = stackTraceOfException;
 			this.startTimestamp = startTimestamp;
 			this.endTimestamp = endTimestamp;
 		}
@@ -505,8 +532,12 @@ public interface DataHelper {
 			return startTimestamp;
 		}
 
-		public String getInvokeExceptionMSG() {
-			return invokeExceptionMSG;
+		public String getStackTraceOfException() {
+			return stackTraceOfException;
+		}
+
+		public void setStackTraceOfException(String stackTraceOfException) {
+			this.stackTraceOfException = stackTraceOfException;
 		}
 
 		public void setStartTimestamp(long startTimestamp) {

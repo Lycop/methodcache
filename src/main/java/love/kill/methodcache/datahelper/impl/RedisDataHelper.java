@@ -171,13 +171,15 @@ public class RedisDataHelper implements DataHelper {
 				}
 			} catch (Throwable throwable) {
 				throwable.printStackTrace();
+				String uuid = UUID.randomUUID().toString().trim().replaceAll("-", "");
 				logger.info("\n ************* CacheData *************" +
-						"\n ** ------- 获取数据发生异常 -------- **" +
-						"\n ** 异常信息：" + throwable.getMessage() +
-						"\n *************************************");
+							"\n ** ------- 获取数据发生异常 -------- **" +
+							"\n ** 异常信息(UUID=" + uuid + ")：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
+							"\n *************************************");
 
 				if (methodcacheProperties.isEnableStatistics()) {
-					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, true, throwable.getMessage(), startTime);
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+							id, remark, hit, true, printStackTrace(throwable, uuid), startTime);
 				}
 
 				throw throwable;

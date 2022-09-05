@@ -248,13 +248,15 @@ public class MemoryDataHelper implements DataHelper {
 				}
 			} catch (Throwable throwable) {
 				throwable.printStackTrace();
+				String uuid = UUID.randomUUID().toString().trim().replaceAll("-", "");
 				logger.info("\n ************* CacheData *************" +
 							"\n ** -------- 获取数据发生异常 ------- **" +
-							"\n ** 异常信息：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
+							"\n ** 异常信息(UUID=" + uuid + ")：" + throwable.getMessage() + "\n" + printStackTrace(throwable.getStackTrace()) +
 							"\n *************************************");
 
 				if (methodcacheProperties.isEnableStatistics()) {
-					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, true, throwable.getMessage(), startTime);
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+							id, remark, hit, true, printStackTrace(throwable, uuid), startTime);
 				}
 
 				throw throwable;
@@ -794,22 +796,6 @@ public class MemoryDataHelper implements DataHelper {
 	private void log(String info) {
 		if (methodcacheProperties.isEnableLog()) {
 			logger.info(info);
-		}
-	}
-
-	private static String printStackTrace(Object[] a) {
-		if (a == null)
-			return "";
-
-		int iMax = a.length - 1;
-		if (iMax == -1)
-			return "";
-
-		StringBuilder b = new StringBuilder();
-		for (int i = 0; ; i++) {
-			b.append(String.valueOf(a[i])).append("\n");
-			if (i == iMax)
-				return b.toString();
 		}
 	}
 
