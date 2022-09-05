@@ -241,14 +241,12 @@ public interface DataHelper {
 
 		if (hit) {
 			// 命中
-			cacheStatisticsModel.incrementHit();
-			cacheStatisticsModel.calculateAvgOfHitSpend(spend);
+			cacheStatisticsModel.incrementHit(spend);
 			cacheStatisticsModel.setMinHitSpend(spend, startTimestamp, args);
 			cacheStatisticsModel.setMaxHitSpend(spend, startTimestamp, args);
 		} else {
 			// 未命中
-			cacheStatisticsModel.incrementFailure();
-			cacheStatisticsModel.calculateAvgOfFailureSpend(spend);
+			cacheStatisticsModel.incrementFailure(spend);
 			cacheStatisticsModel.setMinFailureSpend(spend, startTimestamp, args);
 			cacheStatisticsModel.setMaxFailureSpend(spend, startTimestamp, args);
 		}

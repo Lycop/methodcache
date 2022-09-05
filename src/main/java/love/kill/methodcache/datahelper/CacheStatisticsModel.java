@@ -48,9 +48,9 @@ public class CacheStatisticsModel implements Serializable {
 	private volatile int hit = -1;
 
 	/**
-	 * 命中平均耗时
+	 * 累计命中耗时
 	 */
-	private long avgOfHitSpend = -1L;
+	private volatile long totalOfHitSpend = -1L;
 
 	/**
 	 * 命中时最小耗时
@@ -88,9 +88,9 @@ public class CacheStatisticsModel implements Serializable {
 	private volatile int failure = -1;
 
 	/**
-	 * 未命中平均耗时
+	 * 累计未命中耗时
 	 */
-	private long avgOfFailureSpend = -1L;
+	private long totalOfFailureSpend = -1L;
 
 	/**
 	 * 未命中时最小耗时
@@ -159,40 +159,38 @@ public class CacheStatisticsModel implements Serializable {
 		return String.valueOf(getHit());
 	}
 
-	public void incrementHit() {
-		this.hit = getHit() + 1;
+	public long getTotalOfHitSpend() {
+		return this.totalOfHitSpend == -1L ? 0 : this.totalOfHitSpend;
 	}
 
-	public void incrementHit(int hit) {
-		this.hit = getHit() + hit;
+	public String printTotalOfHitSpend() {
+		if (this.totalOfHitSpend == -1L) {
+			return "";
+		}
+		return String.valueOf(this.totalOfHitSpend);
+	}
+
+	public void incrementHit(long spend) {
+		this.hit = getHit() + 1;
+		this.totalOfHitSpend = getTotalOfHitSpend() + spend;
+
 	}
 
 	public long getAvgOfHitSpend() {
-		return this.avgOfHitSpend == -1L ? 0L : this.avgOfHitSpend;
+		if (hit == -1 || totalOfHitSpend == -1L) {
+			return -1L;
+		}
+		if (hit == 0) {
+			return 0;
+		}
+		return new BigDecimal(totalOfHitSpend).divide(new BigDecimal(hit), 0, BigDecimal.ROUND_HALF_UP).longValue();
 	}
 
 	public String printAvgOfHitSpend() {
-		if (this.avgOfHitSpend == -1L) {
+		if (getAvgOfHitSpend() == -1L) {
 			return "";
 		}
-		return String.valueOf(this.avgOfHitSpend);
-	}
-
-	public void setAvgOfHitSpend(long avgOfHitSpend) {
-		this.avgOfHitSpend = avgOfHitSpend;
-	}
-
-	public void calculateAvgOfHitSpend(long avgOfHitSpend) {
-		if (this.avgOfHitSpend == -1L) {
-			setAvgOfHitSpend(avgOfHitSpend);
-		} else {
-			BigDecimal hit = new BigDecimal(getHit());
-			setAvgOfHitSpend(new BigDecimal(this.avgOfHitSpend)
-					.multiply(hit)
-					.add(new BigDecimal(avgOfHitSpend))
-					.divide(hit, 0, BigDecimal.ROUND_HALF_UP)
-					.longValue());
-		}
+		return String.valueOf(getAvgOfHitSpend());
 	}
 
 	public String printMinHitSpend() {
@@ -255,40 +253,37 @@ public class CacheStatisticsModel implements Serializable {
 		return String.valueOf(getFailure());
 	}
 
-	public void incrementFailure() {
-		this.failure = getFailure() + 1;
+	public long getTotalOfFailureSpend() {
+		return this.totalOfFailureSpend == -1L ? 0 : this.totalOfFailureSpend;
 	}
 
-	public void incrementFailure(int failure) {
-		this.failure = getFailure() + failure;
+	public String printTotalOfFailureSpend() {
+		if (this.totalOfFailureSpend == -1L) {
+			return "";
+		}
+		return String.valueOf(this.totalOfFailureSpend);
+	}
+
+	public void incrementFailure(long spend) {
+		this.failure = getFailure() + 1;
+		this.totalOfFailureSpend = getTotalOfFailureSpend() + spend;
 	}
 
 	public long getAvgOfFailureSpend() {
-		return this.avgOfFailureSpend == -1L ? 0L : this.avgOfFailureSpend;
+		if (this.failure == -1 || this.totalOfFailureSpend == -1L) {
+			return -1L;
+		}
+		if (this.failure == 0) {
+			return 0;
+		}
+		return new BigDecimal(this.totalOfFailureSpend).divide(new BigDecimal(this.failure), 0, BigDecimal.ROUND_HALF_UP).longValue();
 	}
 
 	public String printAvgOfFailureSpend() {
-		if (this.avgOfFailureSpend == -1L) {
+		if (getAvgOfFailureSpend() == -1L) {
 			return "";
 		}
-		return String.valueOf(this.avgOfFailureSpend);
-	}
-
-	public void setAvgOfFailureSpend(long avgOfFailureSpend) {
-		this.avgOfFailureSpend = avgOfFailureSpend;
-	}
-
-	public void calculateAvgOfFailureSpend(long avgOfFailureSpend) {
-		if (this.avgOfFailureSpend == -1L) {
-			setAvgOfFailureSpend(avgOfFailureSpend);
-		} else {
-			BigDecimal failure = new BigDecimal(getFailure());
-			setAvgOfFailureSpend(new BigDecimal(this.avgOfFailureSpend)
-					.multiply(failure)
-					.add(new BigDecimal(avgOfFailureSpend))
-					.divide(failure, 0, BigDecimal.ROUND_HALF_UP)
-					.longValue());
-		}
+		return String.valueOf(getAvgOfFailureSpend());
 	}
 
 	public String printMinFailureSpend() {
@@ -359,13 +354,15 @@ public class CacheStatisticsModel implements Serializable {
 				", id='" + id + '\'' +
 				", remark='" + remark + '\'' +
 				", hit=" + printHit() +
-				", avgOfHitSpend=" + avgOfHitSpend +
+				", avgOfHitSpend=" + getAvgOfHitSpend() +
+				", totalOfHitSpend=" + getTotalOfHitSpend() +
 				", minHitSpend=" + minHitSpend +
 				", timeOfMinHitSpend=" + timeOfMinHitSpend +
 				", maxHitSpend=" + maxHitSpend +
 				", timeOfMaxHitSpend=" + timeOfMaxHitSpend +
 				", failure=" + failure +
-				", avgOfFailureSpend=" + avgOfFailureSpend +
+				", avgOfFailureSpend=" + getAvgOfFailureSpend() +
+				", totalOfFailureSpend=" + getTotalOfFailureSpend() +
 				", minFailureSpend=" + minFailureSpend +
 				", timeOfMinFailureSpend=" + timeOfMinFailureSpend +
 				", maxFailureSpend=" + maxFailureSpend +
