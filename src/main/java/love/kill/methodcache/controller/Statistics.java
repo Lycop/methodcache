@@ -102,7 +102,7 @@ public class Statistics {
 			Map<String, Object> statisticsInfo = new HashMap<>();
 			statisticsInfo.put("id", statisticsModel.getId());
 			statisticsInfo.put("remark", statisticsModel.getRemark());
-			statisticsInfo.put("times", statisticsModel.getTimes());
+			statisticsInfo.put("times", statisticsModel.printTimes());
 			statisticsInfo.put("hit", statisticsModel.printHit());
 			statisticsInfo.put("avgOfHitSpend", statisticsModel.printAvgOfHitSpend());
 			statisticsInfo.put("minHitSpend", statisticsModel.printMinHitSpend());

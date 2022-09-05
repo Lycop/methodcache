@@ -33,7 +33,7 @@ public class CacheStatisticsModel implements Serializable {
 	private int methodSignatureHashCode;
 
 	/**
-	 * id
+	 * 缓存id
 	 */
 	private String id;
 
@@ -160,11 +160,11 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void incrementHit() {
-		this.hit = getHit() + 1;
+		this.hit += 1;
 	}
 
 	public void incrementHit(int hit) {
-		this.hit = getHit() + hit;
+		this.hit += hit;
 	}
 
 	public long getAvgOfHitSpend() {
@@ -172,10 +172,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printAvgOfHitSpend() {
-		if (getAvgOfHitSpend() == 0L) {
+		if (this.avgOfHitSpend == -1L) {
 			return "";
 		}
-		return String.valueOf(getAvgOfHitSpend());
+		return String.valueOf(this.avgOfHitSpend);
 	}
 
 	public void setAvgOfHitSpend(long avgOfHitSpend) {
@@ -183,26 +183,25 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void calculateAvgOfHitSpend(long avgOfHitSpend) {
-		if (getAvgOfHitSpend() == 0L) {
+		if (this.avgOfHitSpend == -1L) {
 			setAvgOfHitSpend(avgOfHitSpend);
 		} else {
-			setAvgOfHitSpend(new BigDecimal(getAvgOfHitSpend()).add(new BigDecimal(avgOfHitSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue());
+			setAvgOfHitSpend(new BigDecimal(this.avgOfHitSpend)
+					.add(new BigDecimal(avgOfHitSpend))
+					.divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP)
+					.longValue());
 		}
-	}
-
-	public long getMinHitSpend() {
-		return this.minHitSpend == -1L ? 0L : this.minHitSpend;
 	}
 
 	public String printMinHitSpend() {
-		if (getMinHitSpend() == 0L) {
+		if (this.minHitSpend == -1L) {
 			return "";
 		}
-		return String.valueOf(getMinHitSpend());
+		return String.valueOf(this.minHitSpend);
 	}
 
 	public void setMinHitSpend(long minHitSpend, long timeOfMinHitSpend, String args) {
-		if (getMinHitSpend() == 0L || getMinHitSpend() > minHitSpend) {
+		if (this.minHitSpend == -1L || this.minHitSpend > minHitSpend) {
 			this.minHitSpend = minHitSpend;
 			this.timeOfMinHitSpend = timeOfMinHitSpend;
 			this.argsOfMinHitSpend = args;
@@ -213,26 +212,22 @@ public class CacheStatisticsModel implements Serializable {
 		if (this.timeOfMinHitSpend == -1L) {
 			return "";
 		}
-		return outPrintSimpleDateFormat.format(new Date(timeOfMinHitSpend));
+		return outPrintSimpleDateFormat.format(new Date(this.timeOfMinHitSpend));
 	}
 
 	public String printArgsOfMinHitSpend() {
-		return Objects.toString(argsOfMinHitSpend);
-	}
-
-	public long getMaxHitSpend() {
-		return this.maxHitSpend == -1L ? 0L : this.maxHitSpend;
+		return Objects.toString(this.argsOfMinHitSpend);
 	}
 
 	public String printMaxHitSpend() {
-		if (getMaxHitSpend() == 0L) {
+		if (this.maxHitSpend == -1L) {
 			return "";
 		}
-		return String.valueOf(getMaxHitSpend());
+		return String.valueOf(this.maxHitSpend);
 	}
 
 	public void setMaxHitSpend(long maxHitSpend, long timeOfMaxHitSpend, String args) {
-		if (getMaxHitSpend() < maxHitSpend) {
+		if (this.maxHitSpend == -1L || this.maxHitSpend < maxHitSpend) {
 			this.maxHitSpend = maxHitSpend;
 			this.timeOfMaxHitSpend = timeOfMaxHitSpend;
 			this.argsOfMaxHitSpend = args;
@@ -259,11 +254,11 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void incrementFailure() {
-		this.failure = getFailure() + 1;
+		this.failure += 1;
 	}
 
 	public void incrementFailure(int failure) {
-		this.failure = getFailure() + failure;
+		this.failure += failure;
 	}
 
 	public long getAvgOfFailureSpend() {
@@ -271,7 +266,10 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public String printAvgOfFailureSpend() {
-		return String.valueOf(getAvgOfFailureSpend());
+		if (this.avgOfFailureSpend == -1L) {
+			return "";
+		}
+		return String.valueOf(this.avgOfFailureSpend);
 	}
 
 	public void setAvgOfFailureSpend(long avgOfFailureSpend) {
@@ -279,26 +277,25 @@ public class CacheStatisticsModel implements Serializable {
 	}
 
 	public void calculateAvgOfFailureSpend(long avgOfFailureSpend) {
-		if (getAvgOfFailureSpend() == 0L) {
+		if (this.avgOfFailureSpend == -1L) {
 			setAvgOfFailureSpend(avgOfFailureSpend);
 		} else {
-			setAvgOfFailureSpend(new BigDecimal(getAvgOfFailureSpend()).add(new BigDecimal(avgOfFailureSpend)).divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP).longValue());
+			setAvgOfFailureSpend(new BigDecimal(this.avgOfFailureSpend)
+					.add(new BigDecimal(avgOfFailureSpend))
+					.divide(new BigDecimal(2), 0, BigDecimal.ROUND_HALF_UP)
+					.longValue());
 		}
-	}
-
-	public long getMinFailureSpend() {
-		return this.minFailureSpend == -1L ? 0 : this.minFailureSpend;
 	}
 
 	public String printMinFailureSpend() {
-		if(getMinFailureSpend() == 0L){
+		if (this.minFailureSpend == -1L) {
 			return "";
 		}
-		return String.valueOf(getMinFailureSpend());
+		return String.valueOf(this.minFailureSpend);
 	}
 
 	public void setMinFailureSpend(long minFailureSpend, long timeOfMinFailureSpend, String args) {
-		if (getMinFailureSpend() == 0L || getMinFailureSpend() > minFailureSpend) {
+		if (this.minFailureSpend == -1L || this.minFailureSpend > minFailureSpend) {
 			this.minFailureSpend = minFailureSpend;
 			this.timeOfMinFailureSpend = timeOfMinFailureSpend;
 			this.argsOfMinFailureSpend = args;
@@ -316,16 +313,15 @@ public class CacheStatisticsModel implements Serializable {
 		return Objects.toString(argsOfMinFailureSpend);
 	}
 
-	public long getMaxFailureSpend() {
-		return this.maxFailureSpend == -1L ? 0L : this.maxFailureSpend;
-	}
-
 	public String printMaxFailureSpend() {
-		return String.valueOf(getMaxFailureSpend());
+		if (this.maxFailureSpend == -1) {
+			return "";
+		}
+		return String.valueOf(this.maxFailureSpend);
 	}
 
 	public void setMaxFailureSpend(long maxFailureSpend, long timeOfMaxFailureSpend, String args) {
-		if (getMaxFailureSpend() < maxFailureSpend) {
+		if (this.maxFailureSpend < maxFailureSpend) {
 			this.maxFailureSpend = maxFailureSpend;
 			this.timeOfMaxFailureSpend = timeOfMaxFailureSpend;
 			this.argsOfMaxFailureSpend = args;
@@ -345,6 +341,10 @@ public class CacheStatisticsModel implements Serializable {
 
 	public int getTimes() {
 		return getHit() + getFailure();
+	}
+
+	public String printTimes() {
+		return String.valueOf(getTimes());
 	}
 
 	@Override
