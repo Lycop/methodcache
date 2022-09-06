@@ -76,7 +76,7 @@
 
     # 其他配置
     spring:
-      # Redis相关配(仅Redis缓存方式生效)
+      # Redis相关配置(仅Redis缓存方式生效)
       redis:
         database: 1
         host: 127.0.0.1
