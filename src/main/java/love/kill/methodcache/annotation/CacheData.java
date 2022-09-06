@@ -31,7 +31,7 @@ public @interface CacheData {
 	 *
 	 * @return 本次请求是否刷新数据
 	 */
-	boolean refresh() default true;
+	boolean refresh() default false;
 
 	/**
 	 * 数据过期时间(毫秒)
