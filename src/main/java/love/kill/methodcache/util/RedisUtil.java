@@ -174,7 +174,8 @@ public class RedisUtil {
 	/**
 	 * 加锁
 	 *
-	 * @param key 键
+	 * @param key        键
+	 * @param expireTime 超时
 	 * @return 加锁成功
 	 */
 	public boolean lock(String key, int expireTime) {

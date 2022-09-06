@@ -226,6 +226,10 @@ public interface DataHelper {
 
 	/**
 	 * 增加统计信息
+	 *
+	 * @param cacheStatisticsModel 缓存统计信息
+	 * @param cacheStatisticsNode  缓存节点信息
+	 * @return 缓存统计信息
 	 */
 	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode) {
 		if (cacheStatisticsModel == null) {
@@ -338,19 +342,22 @@ public interface DataHelper {
 	}
 
 	/**
-	 * 输出异常栈
-	 * */
-	default String printStackTrace(Object[] a) {
-		if (a == null)
+	 * 打印异常栈
+	 *
+	 * @param stackTrace 异常栈
+	 * @return 异常信息
+	 */
+	default String printStackTrace(Object[] stackTrace) {
+		if (stackTrace == null)
 			return "";
 
-		int iMax = a.length - 1;
+		int iMax = stackTrace.length - 1;
 		if (iMax == -1)
 			return "";
 
 		StringBuilder b = new StringBuilder();
 		for (int i = 0; ; i++) {
-			b.append(String.valueOf(a[i])).append("\n");
+			b.append(String.valueOf(stackTrace[i])).append("\n");
 			if (i == iMax)
 				return b.toString();
 		}
@@ -358,7 +365,11 @@ public interface DataHelper {
 
 	/**
 	 * 输出异常栈
-	 * */
+	 *
+	 * @param throwable 异常
+	 * @param uuid      UUID
+	 * @return 异常信息
+	 */
 	default String printStackTrace(Throwable throwable, String uuid) {
 		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" + Arrays.toString(throwable.getStackTrace()) + "]";
 	}

@@ -27,6 +27,8 @@ public class ThreadPoolBuilder {
 
 	/**
 	 * 构建默认配置的线程池
+	 *
+	 * @return 线程池
 	 */
 	public static ExecutorService buildDefaultThreadPool() {
 		return new ThreadPoolExecutor(
@@ -39,6 +41,8 @@ public class ThreadPoolBuilder {
 
 	/**
 	 * 构建单一线程池
+	 *
+	 * @return 线程池
 	 */
 	public static ExecutorService buildSingleThreadPool() {
 		return Executors.newSingleThreadExecutor();
@@ -46,6 +50,8 @@ public class ThreadPoolBuilder {
 
 	/**
 	 * 构建固定线程池
+	 *
+	 * @return 线程池
 	 */
 	public static ExecutorService buildFixedThreadPool() {
 		return Executors.newFixedThreadPool(CORE_POOL_SIZE);
