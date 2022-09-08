@@ -2,6 +2,7 @@ package love.kill.methodcache.datahelper;
 
 import org.springframework.util.StringUtils;
 
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -372,6 +373,27 @@ public interface DataHelper {
 	 */
 	default String printStackTrace(Throwable throwable, String uuid) {
 		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" + Arrays.toString(throwable.getStackTrace()) + "]";
+	}
+
+	/**
+	 * 对象为空判定
+	 *
+	 * @param o        被判定的对象
+	 * @param nullable 允许空数据
+	 */
+	default boolean isNotNull(Object o, boolean nullable) {
+		if(o instanceof NullObject){
+			return false;
+		}
+
+		return o != null || nullable;
+	}
+
+	/**
+	 * 空对象
+	 * */
+	class NullObject implements Serializable {
+		private static final long serialVersionUID = 1L;
 	}
 
 
