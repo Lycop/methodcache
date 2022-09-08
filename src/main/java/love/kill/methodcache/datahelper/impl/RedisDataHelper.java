@@ -162,10 +162,16 @@ public class RedisDataHelper implements DataHelper {
 
 					if (methodcacheProperties.isEnableStatistics()) {
 						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-								id, remark, hit, true, printStackTrace(throwable, uuid), startTime);
+								id, remark, false, true, printStackTrace(throwable, uuid), startTime);
 					}
 
 					throw throwable;
+				}
+
+
+				if (methodcacheProperties.isEnableStatistics()) {
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+							id, remark, hit, false, "", startTime);
 				}
 
 				if (isNotNull(data, nullable)) {
@@ -181,13 +187,6 @@ public class RedisDataHelper implements DataHelper {
 							argsInfo,
 							data,
 							formatDate(expirationTime)));
-
-
-
-					if (methodcacheProperties.isEnableStatistics()) {
-						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-								id, remark, hit, false, "", startTime);
-					}
 
 					try {
 						redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);

@@ -247,6 +247,11 @@ public class MemoryDataHelper implements DataHelper {
 					throw throwable;
 				}
 
+				if (methodcacheProperties.isEnableStatistics()) {
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+							id, remark, hit, false, "", startTime);
+				}
+
 				if (isNotNull(data, nullable)) {
 					long expirationTime = actualDataFunctional.getExpirationTime();
 					log(String.format(	"\n ************* CacheData *************" +
@@ -261,10 +266,6 @@ public class MemoryDataHelper implements DataHelper {
 							data,
 							formatDate(expirationTime)));
 
-					if (methodcacheProperties.isEnableStatistics()) {
-						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-								id, remark, hit, false, "", startTime);
-					}
 					try {
 						cacheDataLock.lock();
 						setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data,
