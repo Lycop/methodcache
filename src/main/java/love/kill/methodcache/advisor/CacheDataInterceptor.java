@@ -6,8 +6,6 @@ import love.kill.methodcache.annotation.CapitalExpiration;
 import love.kill.methodcache.datahelper.DataHelper;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.lang.reflect.Method;
@@ -15,13 +13,11 @@ import java.util.Calendar;
 
 /**
  * CacheData 拦截通知
- * 对 @CacheData 注解方法进行拦截，根据方法入参进行匹配，如果匹配命中且缓存数据未过期，则返回缓存数据
+ * 根据方法入参进行匹配，如果匹配命中且缓存数据未过期，则返回缓存数据
  *
  * @author Lycop
  */
 public class CacheDataInterceptor implements MethodInterceptor {
-
-	private static Logger logger = LoggerFactory.getLogger(CacheDataInterceptor.class);
 
 	private MethodcacheProperties methodcacheProperties;
 
@@ -42,6 +38,10 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		Method method = methodInvocation.getMethod();
 		Object[] args = methodInvocation.getArguments(); //方法入参实体
 		CacheData cacheData = method.getAnnotation(CacheData.class);
+
+		if (cacheData == null) {
+			return methodInvocation.proceed();
+		}
 
 		boolean refresh = cacheData.refresh(); // 刷新数据
 		long expiration = cacheData.expiration(); // 数据过期时间，毫秒

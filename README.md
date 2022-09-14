@@ -48,10 +48,15 @@
     4、behindExpiration：宽限期。此属性表示缓存到期后，会在这个时间范围内随机失效，避免缓存大范围同时失效。
     5、capitalExpiration：基础时间。此属性表示在当前指定类型(秒/分钟/小时/日/月/年)内，缓存一直有效。
     6、nullable：缓存“null”(默认true)。方法返回了“null(包含异常导致)” 时，仍然缓存。
-    7、remark，缓存备注。
+    7、remark：缓存备注。
 
 
-### 五、项目配置说明
+### 五、@DeleteData 属性说明
+
+    1、id：缓存标识。方法执行成功后，删除指定标识对应的缓存数据。
+
+
+### 六、项目配置说明
 
     # 方法缓存
     methodcache:
@@ -83,13 +88,13 @@
         port: 6378
 
 
-### 六、DEMO
+### 七、DEMO
 
     内存方式：https://github.com/Lycop/demo-for-methodcache-with-memory.git  
     Redis方式：https://github.com/Lycop/demo-for-methodcache-with-redis.git
 
 
-### 七、API
+### 八、API
 
 #### 1、查看缓存
     URL：/methodcache/cache
@@ -130,7 +135,7 @@
     参数：无
 
 
-### 八、缓存存储介质
+### 九、缓存存储介质
 
 &emsp;&emsp;**MethodCache**支持“内存”和“Redis”两种方式作为缓存的存储介质，默认使用“内存“方式。  
 
@@ -150,7 +155,7 @@
 &emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，那么这个对象应该是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
 
 
-### 九、注意事项
+### 十、注意事项
 
     1、不建议在不支持幂等性的请求方法中使用。
 
@@ -169,5 +174,5 @@
 
 #### 2.0.2
     优化查询速度
+    支持缓存删除
     修复缓存命中时耗时统计不准确问题
-    支持删除缓存  todo @DeleteData(id={缓存ID1,缓存ID2})

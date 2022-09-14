@@ -1,5 +1,6 @@
 package love.kill.methodcache.datahelper;
 
+import love.kill.methodcache.util.ThreadPoolBuilder;
 import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
@@ -35,21 +36,9 @@ public interface DataHelper {
 	String KEY_SEPARATION_CHARACTER = "@";
 
 	/**
-	 * cpu个数
+	 * 缓存统计线程池
 	 */
-	int CPU_COUNT = Runtime.getRuntime().availableProcessors();
-
-	/**
-	 * 执行线程
-	 */
-	ExecutorService recordExecutorService = new ThreadPoolExecutor(
-			CPU_COUNT + 1, // 核心线程数（CPU核心数 + 1）
-			CPU_COUNT * 2 + 1, // 线程池最大线程数（CPU核心数 * 2 + 1）
-			1,
-			TimeUnit.SECONDS,
-			new LinkedBlockingQueue<>(),
-			Executors.defaultThreadFactory(),
-			new ThreadPoolExecutor.AbortPolicy());
+	ExecutorService recordStatisticsExecutorService = ThreadPoolBuilder.buildDefaultThreadPool();
 
 	/**
 	 * 获取数据
@@ -284,7 +273,7 @@ public interface DataHelper {
 	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
 								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
 								  long startTimestamp, long endTimestamp) {
-		recordExecutorService.execute(() -> {
+		recordStatisticsExecutorService.execute(() -> {
 			try {
 				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode,
 						cacheHashCode, id, remark, hit, invokeException, stackTraceOfException, startTimestamp, endTimestamp));
