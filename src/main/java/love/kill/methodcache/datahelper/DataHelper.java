@@ -129,7 +129,7 @@ public interface DataHelper {
 	/**
 	 * 缓存统计信息队列
 	 */
-	ArrayBlockingQueue<CacheStatisticsNode> cacheStatisticsInfoQueue = new ArrayBlockingQueue<>(10);
+	BlockingQueue<CacheStatisticsNode> cacheStatisticsInfoQueue = new LinkedBlockingQueue<>();
 
 	/**
 	 * 清空缓存统计
@@ -283,11 +283,11 @@ public interface DataHelper {
 	 */
 	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
 								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
-								  long startTimestamp) {
+								  long startTimestamp, long endTimestamp) {
 		recordExecutorService.execute(() -> {
 			try {
 				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode,
-						cacheHashCode, id, remark, hit, invokeException, stackTraceOfException, startTimestamp, new Date().getTime()));
+						cacheHashCode, id, remark, hit, invokeException, stackTraceOfException, startTimestamp, endTimestamp));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

@@ -86,10 +86,12 @@ public class MemoryDataHelper implements DataHelper {
 	 */
 	private final double gcThreshold;
 
-	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties, MemoryMonitor memoryMonitor) {
+	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties,
+							MemoryMonitor memoryMonitor) {
 		this.methodcacheProperties = methodcacheProperties;
 		this.springApplicationProperties = springApplicationProperties;
-		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
+		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold())
+				.divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
 
 		// 移除过期数据
 		Executors.newSingleThreadExecutor().execute(() -> {
@@ -160,7 +162,8 @@ public class MemoryDataHelper implements DataHelper {
 
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Throwable {
+	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id,
+						  String remark, boolean nullable) throws Throwable {
 
 		long startTime = new Date().getTime();
 
@@ -241,7 +244,7 @@ public class MemoryDataHelper implements DataHelper {
 
 					if (methodcacheProperties.isEnableStatistics()) {
 						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-								id, remark, hit, true, printStackTrace(throwable, uuid), startTime);
+								id, remark, hit, true, printStackTrace(throwable, uuid), startTime, new Date().getTime());
 					}
 
 					throw throwable;
@@ -249,7 +252,7 @@ public class MemoryDataHelper implements DataHelper {
 
 				if (methodcacheProperties.isEnableStatistics()) {
 					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-							id, remark, hit, false, "", startTime);
+							id, remark, hit, false, "", startTime, new Date().getTime());
 				}
 
 				if (isNotNull(data, nullable)) {
@@ -279,12 +282,13 @@ public class MemoryDataHelper implements DataHelper {
 			}
 		}
 
-		if (refreshData) {
-			refreshData(actualDataFunctional, nullable, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
+		if (methodcacheProperties.isEnableStatistics()) {
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode,
+					cacheHashCode, id, remark, hit, false, "", startTime, new Date().getTime());
 		}
 
-		if (methodcacheProperties.isEnableStatistics()) {
-			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, false, "", startTime);
+		if (refreshData) {
+			refreshData(actualDataFunctional, nullable, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
 		}
 
 		return cacheDataModel.getData();

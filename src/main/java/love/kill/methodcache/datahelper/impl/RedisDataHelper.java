@@ -162,7 +162,7 @@ public class RedisDataHelper implements DataHelper {
 
 					if (methodcacheProperties.isEnableStatistics()) {
 						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-								id, remark, false, true, printStackTrace(throwable, uuid), startTime);
+								id, remark, false, true, printStackTrace(throwable, uuid), startTime, new Date().getTime());
 					}
 
 					throw throwable;
@@ -171,7 +171,7 @@ public class RedisDataHelper implements DataHelper {
 
 				if (methodcacheProperties.isEnableStatistics()) {
 					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
-							id, remark, hit, false, "", startTime);
+							id, remark, hit, false, "", startTime, new Date().getTime());
 				}
 
 				if (isNotNull(data, nullable)) {
@@ -190,7 +190,8 @@ public class RedisDataHelper implements DataHelper {
 
 					try {
 						redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
-						setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
+						setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime,
+								id, remark);
 					}finally {
 						redisUtil.unlock(redisDataLockKey);
 					}
@@ -201,12 +202,14 @@ public class RedisDataHelper implements DataHelper {
 
 		}
 
-		if (refreshData) {
-			refreshData(redisDataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
+		if (methodcacheProperties.isEnableStatistics()) {
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, false,
+					"", startTime, new Date().getTime());
 		}
 
-		if (methodcacheProperties.isEnableStatistics()) {
-			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark, hit, false, "", startTime);
+		if (refreshData) {
+			refreshData(redisDataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode,
+					cacheHashCode, id, remark);
 		}
 
 		return cacheDataModel.getData();
