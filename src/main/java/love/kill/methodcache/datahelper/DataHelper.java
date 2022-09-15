@@ -138,13 +138,14 @@ public interface DataHelper {
 	/**
 	 * 获取缓存哈希值
 	 *
-	 * @param applicationName 应用名
+	 * @param applicationName         应用名
 	 * @param methodSignatureHashCode 方法签名哈希值
-	 * @param argsHashCode 方法入参哈希值
-	 * */
+	 * @param argsHashCode            方法入参哈希值
+	 * @return 缓存哈希值
+	 */
 	default int getCacheHashCode(String applicationName, int methodSignatureHashCode, int argsHashCode) {
-		String s =  String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode);
-		if(!StringUtils.isEmpty(applicationName)){
+		String s = String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode);
+		if (!StringUtils.isEmpty(applicationName)) {
 			s = applicationName + s;
 		}
 		return DataUtil.hash(s);
@@ -284,7 +285,8 @@ public interface DataHelper {
 	 * @param hit                     命中
 	 * @param invokeException         请求异常
 	 * @param stackTraceOfException   异常栈
-	 * @param startTimestamp          记录开始时间
+	 * @param startTimestamp          开始时间
+	 * @param endTimestamp    		  结束时间
 	 */
 	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
 								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
@@ -385,12 +387,12 @@ public interface DataHelper {
 	 *
 	 * @param o        被判定的对象
 	 * @param nullable 允许空数据
+	 * @return 对象为空对象
 	 */
 	default boolean isNotNull(Object o, boolean nullable) {
-		if(o instanceof NullObject){
+		if (o instanceof NullObject) {
 			return false;
 		}
-
 		return o != null || nullable;
 	}
 
