@@ -1,5 +1,6 @@
 package love.kill.methodcache.datahelper;
 
+import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.util.ThreadPoolBuilder;
 import org.springframework.util.StringUtils;
 
@@ -135,20 +136,35 @@ public interface DataHelper {
 	Map<String, CacheStatisticsModel> wipeStatisticsAll();
 
 	/**
+	 * 获取缓存哈希值
+	 *
+	 * @param applicationName 应用名
+	 * @param methodSignatureHashCode 方法签名哈希值
+	 * @param argsHashCode 方法入参哈希值
+	 * */
+	default int getCacheHashCode(String applicationName, int methodSignatureHashCode, int argsHashCode) {
+		String s =  String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode);
+		if(!StringUtils.isEmpty(applicationName)){
+			s = applicationName + s;
+		}
+		return DataUtil.hash(s);
+	}
+
+	/**
 	 * 获取缓存key
 	 *
 	 * @param applicationName 应用名
 	 * @param methodSignature 方法签名
-	 * @param cacheHashCode   缓存签名
+	 * @param cacheHashCode   缓存哈希值
 	 * @param id              缓存ID
 	 * @return 缓存key
 	 */
 	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
+		String cacheKey = methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
 		if (StringUtils.isEmpty(applicationName)) {
-			return methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
-		} else {
-			return applicationName + KEY_SEPARATION_CHARACTER + methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
+			return cacheKey;
 		}
+		return applicationName + KEY_SEPARATION_CHARACTER + cacheKey;
 	}
 
 	/**

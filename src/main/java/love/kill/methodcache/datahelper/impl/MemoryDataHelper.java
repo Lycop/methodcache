@@ -59,9 +59,9 @@ public class MemoryDataHelper implements DataHelper {
 	private final MethodcacheProperties methodcacheProperties;
 
 	/**
-	 * spring属性
-	 */
-	private final SpringApplicationProperties springApplicationProperties;
+	 * 应用名
+	 * */
+	private String applicationName;
 
 	/**
 	 * 缓存数据锁
@@ -87,9 +87,14 @@ public class MemoryDataHelper implements DataHelper {
 	public MemoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties,
 							MemoryMonitor memoryMonitor) {
 		this.methodcacheProperties = methodcacheProperties;
-		this.springApplicationProperties = springApplicationProperties;
+
+		if (StringUtils.isEmpty(this.applicationName = methodcacheProperties.getName())) {
+			this.applicationName = springApplicationProperties.getName();
+		}
+
 		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold())
 				.divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
+
 
 		// 移除过期数据
 		Executors.newSingleThreadExecutor().execute(() -> {
@@ -165,16 +170,11 @@ public class MemoryDataHelper implements DataHelper {
 
 		long startTime = new Date().getTime();
 
-		String applicationName; // 应用名
-		if (StringUtils.isEmpty(applicationName = methodcacheProperties.getName())) {
-			applicationName = springApplicationProperties.getName();
-		}
-
 		String methodSignature = method.toGenericString(); // 方法签名
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希值
 		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希值
-		String argsInfo = Arrays.toString(args); // 入参内容
-		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)); // 缓存哈希值
+		String argsStr = Arrays.toString(args); // 入参
+		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode); // 缓存哈希值
 		if (StringUtils.isEmpty(id)) {
 			id = String.valueOf(methodSignature.hashCode());
 		}
@@ -191,7 +191,7 @@ public class MemoryDataHelper implements DataHelper {
 							"\n ** 过期时间：%s" +
 							"\n *************************************",
 				methodSignature,
-				argsInfo,
+				argsStr,
 				hit ? "是" : "否",
 				hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
@@ -214,7 +214,7 @@ public class MemoryDataHelper implements DataHelper {
 								"\n ** 过期时间：%s" +
 								"\n *************************************",
 					methodSignature,
-					argsInfo,
+					argsStr,
 					hit ? "是" : "否",
 					hit ? formatDate(cacheDataModel.getExpireTime()) : "无"));
 
@@ -230,7 +230,7 @@ public class MemoryDataHelper implements DataHelper {
 										"\n ** 返回数据：%s" +
 										"\n *************************************",
 							methodSignature,
-							argsInfo,
+							argsStr,
 							data));
 				} catch (Throwable throwable) {
 					throwable.printStackTrace();
@@ -241,7 +241,7 @@ public class MemoryDataHelper implements DataHelper {
 								"\n *************************************");
 
 					if (methodcacheProperties.isEnableStatistics()) {
-						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+						recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsStr, argsHashCode, cacheHashCode,
 								id, remark, hit, true, printStackTrace(throwable, uuid), startTime, new Date().getTime());
 					}
 
@@ -249,7 +249,7 @@ public class MemoryDataHelper implements DataHelper {
 				}
 
 				if (methodcacheProperties.isEnableStatistics()) {
-					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode,
+					recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsStr, argsHashCode, cacheHashCode,
 							id, remark, hit, false, "", startTime, new Date().getTime());
 				}
 
@@ -263,15 +263,13 @@ public class MemoryDataHelper implements DataHelper {
 										"\n ** 过期时间：%s" +
 										"\n *************************************",
 							methodSignature,
-							argsInfo,
+							argsStr,
 							data,
 							formatDate(expirationTime)));
 
 					try {
 						cacheDataLock.lock();
-						setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data,
-								expirationTime, id, remark);
-
+						setDataToMemory(applicationName, methodSignature, argsStr, cacheHashCode, data, expirationTime, id, remark);
 					} finally {
 						cacheDataLock.unlock();
 					}
@@ -281,12 +279,12 @@ public class MemoryDataHelper implements DataHelper {
 		}
 
 		if (methodcacheProperties.isEnableStatistics()) {
-			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode,
+			recordStatistics(cacheKey, methodSignature, methodSignatureHashCode, argsStr, argsHashCode,
 					cacheHashCode, id, remark, hit, false, "", startTime, new Date().getTime());
 		}
 
 		if (refreshData) {
-			refreshData(actualDataFunctional, nullable, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, id, remark);
+			refreshData(applicationName, actualDataFunctional, nullable, methodSignature, argsStr, cacheHashCode, id, remark);
 		}
 
 		return cacheDataModel.getData();
@@ -433,17 +431,16 @@ public class MemoryDataHelper implements DataHelper {
 	/**
 	 * 刷新数据
 	 *
+	 * @param applicationName    	  应用名
 	 * @param actualDataFunctional    真实数据请求
 	 * @param nullable                返回值允许为空
 	 * @param methodSignature         方法签名
-	 * @param methodSignatureHashCode 方法签名哈希值
-	 * @param argsInfo                方法参数信息
-	 * @param argsHashCode            方法参数哈希
+	 * @param argsStr                 方法参数
 	 * @param id                      缓存ID
 	 * @param remark                  缓存备注
 	 */
-	private void refreshData(ActualDataFunctional actualDataFunctional, boolean nullable, String methodSignature, int methodSignatureHashCode,
-							 String argsInfo, int argsHashCode, int cacheHashCode, String id, String remark) {
+	private void refreshData(String applicationName, ActualDataFunctional actualDataFunctional, boolean nullable, String methodSignature,
+							 String argsStr, int cacheHashCode, String id, String remark) {
 
 		executorService.execute(() -> {
 
@@ -459,7 +456,7 @@ public class MemoryDataHelper implements DataHelper {
 									"\n ** 过期时间：%s" +
 									"\n *************************************",
 						methodSignature,
-						argsInfo,
+						argsStr,
 						data,
 						formatDate(expirationTime)));
 			} catch (Throwable throwable) {
@@ -474,7 +471,7 @@ public class MemoryDataHelper implements DataHelper {
 			if (isNotNull(data, nullable)) {
 				try {
 					cacheDataLock.lock();
-					setDataToMemory(methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
+					setDataToMemory(applicationName, methodSignature, argsStr, cacheHashCode, data, expirationTime, id, remark);
 				} finally {
 					cacheDataLock.unlock();
 				}
@@ -503,15 +500,18 @@ public class MemoryDataHelper implements DataHelper {
 	/**
 	 * 保存缓存数据至内存
 	 *
+	 * @param applicationName 应用名
 	 * @param methodSignature 方法签名
-	 * @param argsHashCode    入参哈希
-	 * @param args            入参信息
+	 * @param args            入参
+	 * @param cacheHashCode   缓存哈希值
 	 * @param data            数据
 	 * @param expireTime      过期时间
+	 * @param id		      缓存ID
+	 * @param remark		  缓存备注
 	 */
-	private void setDataToMemory(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, Object data, long expireTime, String id, String remark) {
+	private void setDataToMemory(String applicationName, String methodSignature, String args, int cacheHashCode, Object data, long expireTime, String id, String remark) {
 
-		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, data, expireTime);
+		CacheDataModel cacheDataModel = new CacheDataModel(applicationName, methodSignature, args, cacheHashCode, data, expireTime);
 
 		if (!StringUtils.isEmpty(id)) {
 			cacheDataModel.setId(id);

@@ -18,24 +18,19 @@ public class CacheDataModel implements Serializable {
 	private static SimpleDateFormat outPrintSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	/**
+	 * 应用名
+	 */
+	private String applicationName;
+
+	/**
 	 * 方法签名
 	 */
 	private String methodSignature;
 
 	/**
-	 * 方法签名哈希值
-	 */
-	private int methodSignatureHashCode;
-
-	/**
-	 * 入参
+	 * 方法入参
 	 */
 	private String args;
-
-	/**
-	 * 入参哈希值
-	 */
-	private int argsHashCode;
 
 	/**
 	 * 缓存哈希值
@@ -43,7 +38,7 @@ public class CacheDataModel implements Serializable {
 	private int cacheHashCode;
 
 	/**
-	 * 数据
+	 * 缓存数据
 	 */
 	private Object data;
 
@@ -74,18 +69,20 @@ public class CacheDataModel implements Serializable {
 	private long instanceSize = 0L;
 
 
-	public CacheDataModel(String methodSignature, int methodSignatureHashCode, String args, int argsHashCode, int cacheHashCode, Object data, long expireTime) {
+	public CacheDataModel(String applicationName, String methodSignature, String args, int cacheHashCode, Object data, long expireTime) {
+		this.applicationName = applicationName;
 		this.methodSignature = methodSignature;
-		this.methodSignatureHashCode = methodSignatureHashCode;
-		this.argsHashCode = argsHashCode;
 		this.args = args;
+		this.cacheHashCode = cacheHashCode;
 		this.data = data;
 		this.expireTime = expireTime;
-		this.cacheHashCode = cacheHashCode;
 
 		refreshInstanceSize();
 	}
 
+	public String getApplicationName() {
+		return applicationName;
+	}
 
 	public String getMethodSignature() {
 		return methodSignature;
@@ -93,10 +90,6 @@ public class CacheDataModel implements Serializable {
 
 	public String getArgs() {
 		return args;
-	}
-
-	public int getArgsHashCode() {
-		return argsHashCode;
 	}
 
 	public int getCacheHashCode() {
@@ -158,9 +151,7 @@ public class CacheDataModel implements Serializable {
 	public String toString() {
 		return "CacheDataModel{" +
 				"methodSignature='" + methodSignature + '\'' +
-				"methodSignatureHashCode='" + methodSignatureHashCode + '\'' +
 				", args='" + args + '\'' +
-				", argsHashCode=" + argsHashCode +
 				", data=" + data +
 				", cacheTime=" + formatDate(cacheTime) +
 				", expireTime=" + formatDate(expireTime) +

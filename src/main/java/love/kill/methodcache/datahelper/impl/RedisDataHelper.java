@@ -32,9 +32,9 @@ public class RedisDataHelper implements DataHelper {
 	private final MethodcacheProperties methodcacheProperties;
 
 	/**
-	 * spring属性
-	 */
-	private final SpringApplicationProperties springApplicationProperties;
+	 * 应用名
+	 * */
+	private String applicationName;
 
 	/**
 	 * redis工具类
@@ -55,7 +55,10 @@ public class RedisDataHelper implements DataHelper {
 	public RedisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springApplicationProperties, RedisUtil redisUtil) {
 		this.redisUtil = redisUtil;
 		this.methodcacheProperties = methodcacheProperties;
-		this.springApplicationProperties = springApplicationProperties;
+
+		if (StringUtils.isEmpty(this.applicationName = methodcacheProperties.getName())) {
+			this.applicationName = springApplicationProperties.getName();
+		}
 
 		if (methodcacheProperties.isEnableStatistics()) {
 			Executors.newSingleThreadExecutor().execute(() -> {
@@ -86,21 +89,16 @@ public class RedisDataHelper implements DataHelper {
 
 		long startTime = new Date().getTime();
 
-		String applicationName; // 应用名
-		if (StringUtils.isEmpty(applicationName = methodcacheProperties.getName())) {
-			applicationName = springApplicationProperties.getName();
-		}
-
 		String methodSignature = method.toGenericString(); // 方法签名
-		int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
-		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希
-		String argsInfo = Arrays.toString(args); // 入参信息
-		int cacheHashCode = DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)); // 缓存哈希
+		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希
+		int argsHashCode = DataUtil.getArgsHashCode(args); // 方法入参哈希
+		String argsInfo = Arrays.toString(args); // 方法入参信息
+		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode); // 缓存哈希值，由"方法签名哈希" + "入参哈希"组成
 		if (StringUtils.isEmpty(id)) {
 			id = String.valueOf(methodSignature.hashCode());
 		}
-		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id); // 缓存key
-		String redisDataLockKey = getIntactDataLockKey(cacheKey);
+		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id); // 构建缓存key
+		String dataLockKey = getIntactDataLockKey(cacheKey); // 数据锁
 		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false);
 		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 		log(String.format(	"\n ************* CacheData *************" +
@@ -118,10 +116,10 @@ public class RedisDataHelper implements DataHelper {
 		if (!hit) {
 			try {
 				// 缓存未命中或数据已过期，加锁再次尝试获取
-				redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
+				redisUtil.lock(dataLockKey, Integer.MAX_VALUE, true);
 				cacheDataModel = getDataFromRedis(cacheKey, false);
 			}finally {
-				redisUtil.unlock(redisDataLockKey);
+				redisUtil.unlock(dataLockKey);
 			}
 
 			hit = (cacheDataModel != null && !cacheDataModel.isExpired());
@@ -189,14 +187,13 @@ public class RedisDataHelper implements DataHelper {
 							formatDate(expirationTime)));
 
 					try {
-						redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
-						setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime,
+						redisUtil.lock(dataLockKey, Integer.MAX_VALUE, true);
+						setDataToRedis(applicationName, cacheKey, methodSignature, argsInfo, cacheHashCode, data, expirationTime,
 								id, remark);
 					}finally {
-						redisUtil.unlock(redisDataLockKey);
+						redisUtil.unlock(dataLockKey);
 					}
 				}
-
 				return data;
 			}
 
@@ -208,7 +205,7 @@ public class RedisDataHelper implements DataHelper {
 		}
 
 		if (refreshData) {
-			refreshData(redisDataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode,
+			refreshData(applicationName, dataLockKey, actualDataFunctional, nullable, cacheKey, methodSignature, argsInfo,
 					cacheHashCode, id, remark);
 		}
 
@@ -223,11 +220,11 @@ public class RedisDataHelper implements DataHelper {
 
 		Set<String> cacheKeys = new HashSet<>();
 		if (StringUtils.isEmpty(match)) {
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, null, null)));
 		} else {
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), match, null, null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, match, null)));
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, match)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, match, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, match, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, null, match)));
 		}
 
 		Set<CacheDataModel> dataModelSet = getCacheDataModel(cacheKeys);
@@ -250,14 +247,13 @@ public class RedisDataHelper implements DataHelper {
 		Set<String> cacheKeys = new HashSet<>();
 
 		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(cacheHashCode)) {
-			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, null)));
+			cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, null, null)));
 		} else {
 			if (!StringUtils.isEmpty(id)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, null, id)));
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, null, id)));
 			}
-
 			if (!StringUtils.isEmpty(cacheHashCode)) {
-				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(springApplicationProperties.getName(), null, cacheHashCode, null)));
+				cacheKeys.addAll(redisUtil.keys(buildCacheKeyPattern(applicationName, null, cacheHashCode, null)));
 			}
 		}
 
@@ -267,19 +263,15 @@ public class RedisDataHelper implements DataHelper {
 				continue;
 			}
 
-			String methodSignature = dataModel.getMethodSignature();
-			int methodSignatureHashCode = methodSignature.hashCode(); // 方法入参哈希
-			String argsHashCode = String.valueOf(dataModel.getArgsHashCode());
-			String cacheDataId = dataModel.getId();
-			String cacheKey = methodSignature + KEY_SEPARATION_CHARACTER + DataUtil.hash(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode)) + KEY_SEPARATION_CHARACTER + cacheDataId;
+			String cacheKey = getCacheKey(dataModel.getApplicationName(), dataModel.getMethodSignature(), dataModel.getCacheHashCode(), dataModel.getId()); // 缓存key
 			String redisDataLockKey = getIntactDataLockKey(cacheKey);
 			try {
 				redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
 				if (!dataModel.isExpired()) {
-					filterDataModel(delCacheMap, dataModel, "");
 					dataModel.expired();
-					deleteDataFromRedis(cacheKey);
 				}
+				filterDataModel(delCacheMap, dataModel, "");
+				deleteDataFromRedis(cacheKey);
 			} catch (Throwable throwable) {
 				throwable.printStackTrace();
 			} finally {
@@ -338,15 +330,13 @@ public class RedisDataHelper implements DataHelper {
 	 * @param nullable                返回值允许为空
 	 * @param cacheKey                缓存key
 	 * @param methodSignature         方法签名
-	 * @param methodSignatureHashCode 方法签名哈希值
-	 * @param argsInfo                方法参数信息
-	 * @param argsHashCode            方法参数哈希
+	 * @param argsStr                 方法参数信息
 	 * @param id                      缓存ID
 	 * @param remark                  缓存备注
 	 */
-	private void refreshData(String redisDataLockKey, ActualDataFunctional actualDataFunctional, boolean nullable,
-							 String cacheKey, String methodSignature, int methodSignatureHashCode, String argsInfo,
-							 int argsHashCode, int cacheHashCode, String id, String remark) {
+	private void refreshData(String applicationName, String redisDataLockKey, ActualDataFunctional actualDataFunctional,
+							 boolean nullable, String cacheKey, String methodSignature,
+							 String argsStr, int cacheHashCode, String id, String remark) {
 		executorService.execute(() -> {
 
 			long expirationTime = actualDataFunctional.getExpirationTime();
@@ -361,7 +351,7 @@ public class RedisDataHelper implements DataHelper {
 									"\n 过期时间：%s" +
 									"\n *************************************",
 						methodSignature,
-						argsInfo,
+						argsStr,
 						data,
 						formatDate(expirationTime)));
 			} catch (Throwable throwable) {
@@ -375,7 +365,7 @@ public class RedisDataHelper implements DataHelper {
 			if (data != null || nullable) {
 				try {
 					redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
-					setDataToRedis(cacheKey, methodSignature, methodSignatureHashCode, argsInfo, argsHashCode, cacheHashCode, data, expirationTime, id, remark);
+					setDataToRedis(applicationName, cacheKey, methodSignature, argsStr, cacheHashCode, data, expirationTime, id, remark);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				} finally {
@@ -386,20 +376,23 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	/**
-	 * 构建缓存key规则
+	 * 构建模糊搜索缓存key
 	 *
+	 * 缓存哈希规则： 应用名@方法签名@缓存哈希值@缓存ID;
+	 *
+	 * @param applicationName 应用名
 	 * @param methodSignature 方法签名
-	 * @param cacheHashCode   入参哈希
-	 * @param id              id
+	 * @param cacheHashCode   缓存哈希值
+	 * @param id              缓存ID
 	 */
 	private String buildCacheKeyPattern(String applicationName, String methodSignature, String cacheHashCode, String id) {
-		String cacheKeyPattern = "%{applicationName}%" + KEY_SEPARATION_CHARACTER + "%{methodSignature}%" + KEY_SEPARATION_CHARACTER + "%{cacheHashCode}%" + KEY_SEPARATION_CHARACTER + "%{id}%";
+		String cacheKeyPattern = "%{methodSignature}%" + KEY_SEPARATION_CHARACTER + "%{cacheHashCode}%" + KEY_SEPARATION_CHARACTER + "%{id}%";
 
-		if (!StringUtils.isEmpty(applicationName)) {
-			cacheKeyPattern = cacheKeyPattern.replace("%{applicationName}%", "*" + applicationName + "*");
-		} else {
-			cacheKeyPattern = cacheKeyPattern.replace("%{applicationName}%", "*");
+		if(!StringUtils.isEmpty(applicationName)){
+			cacheKeyPattern = applicationName + KEY_SEPARATION_CHARACTER + cacheKeyPattern;
 		}
+
+		cacheKeyPattern = METHOD_CACHE_DATA + KEY_SEPARATION_CHARACTER + cacheKeyPattern;
 
 		if (!StringUtils.isEmpty(methodSignature)) {
 			cacheKeyPattern = cacheKeyPattern.replace("%{methodSignature}%", "*" + methodSignature + "*");
@@ -414,10 +407,11 @@ public class RedisDataHelper implements DataHelper {
 		}
 
 		if (!StringUtils.isEmpty(id)) {
-			cacheKeyPattern = cacheKeyPattern.replace("%{id}%", "*" + id + "*");
+			cacheKeyPattern = cacheKeyPattern.replace("%{id}%", id);
 		} else {
 			cacheKeyPattern = cacheKeyPattern.replace("%{id}%", "*");
 		}
+
 		return cacheKeyPattern;
 	}
 
@@ -449,21 +443,20 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * 缓存数据至Redis
 	 *
+	 * @param applicationName         应用名
 	 * @param cacheKey                缓存key
 	 * @param methodSignature         方法签名
-	 * @param methodSignatureHashCode 方法签名哈希
-	 * @param args                    入参
-	 * @param argsHashCode            入参哈希
+	 * @param argStr                  方法入参
 	 * @param cacheHashCode           缓存哈希
 	 * @param data                    数据
 	 * @param expireTimeStamp         过期时间
 	 * @param id                      缓存ID
 	 * @param remark                  缓存备注
 	 */
-	private void setDataToRedis(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
+	private void setDataToRedis(String applicationName, String cacheKey, String methodSignature, String argStr,
 								int cacheHashCode, Object data, long expireTimeStamp, String id, String remark) {
 
-		CacheDataModel cacheDataModel = new CacheDataModel(methodSignature, methodSignatureHashCode, args, argsHashCode, cacheHashCode, data, expireTimeStamp);
+		CacheDataModel cacheDataModel = new CacheDataModel(applicationName, methodSignature, argStr, cacheHashCode, data, expireTimeStamp);
 
 		if (!StringUtils.isEmpty(id)) {
 			cacheDataModel.setId(id);
