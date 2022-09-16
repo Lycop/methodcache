@@ -97,42 +97,80 @@
 ### 八、API
 
 #### 1、查看缓存
-    URL：/methodcache/cache
-    方法：GET
-    参数：
-        【match】：模糊匹配，非必传。支持“方法签名”、“缓存ID”、“缓存哈希值”
+    【地址】：/methodcache/cache
+    【方法】：GET
+    【入参】：
+        match：模糊匹配，非必传。支持“方法签名”、“缓存ID”、“缓存哈希值”
+    【出参】：
+        args：请求入参
+        data：缓存数据
+        hashCode：缓存哈希值
+        cacheTime：缓存数据时间
+        expireTime：缓存数据过期时间
+
 
 #### 2、清除指定缓存
-    URL：/methodcache/cache
-    方法：DELETE
-    参数：
-        【id】：缓存ID
-        【hashcode】：缓存哈希值
+    【地址】：/methodcache/cache
+    【方法】：DELETE
+    【入参】：
+        id：缓存ID
+        hashcode：缓存哈希值
+    【出参】：已删除的缓存数据
+
 
 #### 3、清除所有缓存
-    URL：/methodcache/cache/all
-    方法：DELETE
-    参数：无
+    【地址】：/methodcache/cache/all
+    【方法】：DELETE
+    【入参】：无
+    【出参】：已删除的缓存数据
 
 #### 4、查看统计信息
-    URL：/methodcache/statistics
-    方法：GET
-    参数：
-        【match】：模糊匹配，非必传。支持“方法签名”、“缓存ID”
-        【order_by】：排序，0-id，1-总次数，2-命中次数，3-未命中次数，4-命中时平均耗时，5-未命中时平均耗时
-        【order_type】：排序方式，0-升序，1-降序
+    【地址】：/methodcache/statistics
+    【方法】：GET
+    【入参】：
+        match：模糊匹配，非必传。支持“方法签名”、“缓存ID”
+        order_by：排序，0-id，1-总次数，2-命中次数，3-未命中次数，4-命中时平均耗时，5-未命中时平均耗时
+        order_type：排序方式，0-升序，1-降序
+    【出参】：
+        id：缓存ID
+        remark：缓存备注
+        times：请求总次数
+        hit：缓存命中次数
+        avgOfHitSpend：缓存命中的平均耗时
+        totalOfHitSpend：缓存命中的总耗时
+        minHitSpend：缓存命中最小耗时
+        timeOfMinHitSpend：缓存命中最小耗时发生的时间
+        argsOfMinHitSpend：缓存命中最小耗时的请求参数
+        maxHitSpend：缓存命中最大耗时
+        timeOfMaxHitSpend：缓存命中最大耗时发生的时间
+        argsOfMaxHitSpend：缓存命中最大耗时的请求参数
+        failure：缓存未命中
+        avgOfFailureSpend：缓存未命中的平均耗时
+        totalOfFailureSpend：缓存未命中的总耗时
+        minFailureSpend：缓存未命中最小耗时
+        timeOfMinFailureSpend：缓存未命中最小耗时发生的时间
+        argsOfMinFailureSpend：缓存未命中最小耗时的请求参数
+        maxFailureSpend：缓存未命中最大耗时
+        timeOfMaxFailureSpend：缓存未命中最大耗时发生的时间
+        argsOfMaxFailureSpend：缓存命中最大耗时的请求参数
+        exception：方法发生异常次数
+        argsOfLastException：方法发生异常的请求参数
+        stackTraceOfLastException：最近一次发生异常信息栈
+        timeOfLastException：最近一次发生异常时间
 
 #### 5、清空指定统计信息
-    URL：/methodcache/statistics
-    方法：DELETE
-    参数：
-        【id】：缓存ID
-        【method】：方法签名
+    【地址】：/methodcache/statistics
+    【方法】：DELETE
+    【入参】：
+        id：缓存ID
+        method：方法签名
+    【出参】：已清空的统计信息
 
 #### 6、清空所有缓存统计
-    URL：/methodcache/statistics/all
-    方法：DELETE
-    参数：无
+    【地址】：/methodcache/statistics/all
+    【方法】：DELETE
+    【入参】：无
+    【出参】：已清空的统计信息
 
 
 ### 九、缓存存储介质
@@ -155,11 +193,6 @@
 &emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，那么这个对象应该是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
 
 
-### 十、注意事项
-
-    1、不建议在不支持幂等性的请求方法中使用。
-
-
 ### 最后
 
 &emsp;&emsp;使用过程中，如果有问题或者建议，欢迎联系我(i@kill.love)。也欢迎大家一起加入并完善本项目。 ：）
@@ -175,4 +208,4 @@
 #### 2.0.2
     优化查询速度
     支持缓存删除
-    修复缓存命中时耗时统计不准确问题
+    修复缓存命中时，耗时统计不准确问题
