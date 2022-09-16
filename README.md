@@ -193,7 +193,7 @@
 &emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，那么这个对象应该是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
 
 
-### 十、环境版本
+### 十、运行环境
     Java 8+
     SpringBoot 2.x
 
