@@ -195,7 +195,7 @@
 
 ### 十、运行环境
     Java 8+
-    SpringBoot 2.x
+    Spring Boot 2.x 及以上
 
 
 ### 最后
