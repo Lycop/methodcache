@@ -33,11 +33,11 @@
 
 3、在接口或实现类方法上加上 **@cacheData** 注解
     
-    	/**
-	 * 查询用户信息
-	 * */
-	@CacheData(id = "getUserInfo", expiration = 10000L, refresh = false, remark = "查询用户信息")
-	UserInfo getUserInfo(String userId);
+    /**
+     * 查询用户信息
+     * */
+    @CacheData(id = "getUserInfo", expiration = 10000L, refresh = false, remark = "查询用户信息")
+    UserInfo getUserInfo(String userId);
 
 
 ### 四、@CacheData 属性说明
