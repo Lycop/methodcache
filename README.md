@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.1</version>
+        <version>2.0.2</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -33,7 +33,7 @@
 
 3、在接口或实现类方法上加上 **@cacheData** 注解
     
-    /**
+    	/**
 	 * 查询用户信息
 	 * */
 	@CacheData(id = "getUserInfo", expiration = 10000L, refresh = false, remark = "查询用户信息")
