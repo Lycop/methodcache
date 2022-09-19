@@ -60,8 +60,8 @@
 
     # 方法缓存
     methodcache:
-    # 缓存应用名称，若为空则取 ${spring.application.name}
-    #  name: demo-for-methodcache
+      # 缓存应用名称，若为空则取 ${spring.application.name}
+      name: demo-for-methodcache
       # 开启缓存。true：开启，false(默认)：关闭。
       enable: true
       # 缓存方式。(M)emory：内存，(R)edis：redis，默认 M
