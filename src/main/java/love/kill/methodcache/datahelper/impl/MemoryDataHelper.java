@@ -118,8 +118,7 @@ public class MemoryDataHelper implements DataHelper {
 
 						// 移除过期缓存数据
 						Map<String, Set<Integer>> methodArgsHashCodeMap = dataExpireInfo.get(expireTimeStamp);
-						Set<String> methodSignatureSet = methodArgsHashCodeMap.keySet();
-						for (String methodSignature : methodSignatureSet) {
+						for (String methodSignature : new HashSet<>(methodArgsHashCodeMap.keySet())) {
 							Set<Integer> cacheHashCodeSet = methodArgsHashCodeMap.get(methodSignature);
 							for (Integer cacheHashCode : cacheHashCodeSet) {
 								doRemoveData(methodSignature, cacheHashCode);
@@ -309,7 +308,7 @@ public class MemoryDataHelper implements DataHelper {
 				// 模糊匹配，支持：缓存哈希值、方法签名、缓存ID
 
 				dataModelSet = new HashSet<>();
-				for (Integer cacheHashCode : dataModelMap.keySet()) {
+				for (Integer cacheHashCode : new HashSet<>(dataModelMap.keySet())) {
 					CacheDataModel dataModel = dataModelMap.get(cacheHashCode);
 					String methodSignature = dataModel.getMethodSignature();
 					String id = dataModel.getId();
@@ -718,7 +717,7 @@ public class MemoryDataHelper implements DataHelper {
 		expireTimeStampKeyList.sort((l1, l2) -> (int) (l1 - l2));
 		for (long eachExpireTimeStamp : expireTimeStampKeyList) {
 			Map<String, Set<Integer>> dataExpireInfoMethodSignatureCacheHashCodeMap = dataExpireInfo.get(eachExpireTimeStamp);
-			for (String dataExpireInfoMethodSignature : dataExpireInfoMethodSignatureCacheHashCodeMap.keySet()) {
+			for (String dataExpireInfoMethodSignature : new HashSet<>(dataExpireInfoMethodSignatureCacheHashCodeMap.keySet())) {
 				Map<Integer, CacheDataModel> cacheDataCacheHashCodeModelMap = cacheData.get(dataExpireInfoMethodSignature);
 				Set<Integer> dataExpireInfoCacheHashCodeSet = dataExpireInfoMethodSignatureCacheHashCodeMap.get(dataExpireInfoMethodSignature);
 				Iterator<Integer> dataExpireInfoCacheHashCodeIterator = dataExpireInfoCacheHashCodeSet.iterator();
