@@ -41,12 +41,19 @@ public interface DataHelper {
 	 */
 	ExecutorService recordStatisticsExecutorService = ThreadPoolBuilder.buildDefaultThreadPool();
 
+
+	/**
+	 * 线程数据
+	 * */
+	ThreadLocal<String> threadLocal = new ThreadLocal<>();
+
 	/**
 	 * 获取数据
 	 *
 	 * @param method               方法
 	 * @param args                 请求参数
-	 * @param refreshData          刷新数据
+	 * @param isolationSignal      隔离标记
+	 * @param refreshData          是否刷新数据
 	 * @param actualDataFunctional 请求模型
 	 * @param id                   缓存ID
 	 * @param remark               缓存备注
@@ -54,7 +61,8 @@ public interface DataHelper {
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
 	 */
-	Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Throwable;
+	Object getData(Method method, Object[] args, String isolationSignal, boolean refreshData, ActualDataFunctional actualDataFunctional,
+				   String id, String remark, boolean nullable) throws Throwable;
 
 	/**
 	 * 请求模型
@@ -141,14 +149,20 @@ public interface DataHelper {
 	 * @param applicationName         应用名
 	 * @param methodSignatureHashCode 方法签名哈希值
 	 * @param argsHashCode            方法入参哈希值
+	 * @param extensionStr         	  扩展字符串
 	 * @return 缓存哈希值
 	 */
-	default int getCacheHashCode(String applicationName, int methodSignatureHashCode, int argsHashCode) {
-		String s = String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode);
+	default int getCacheHashCode(String applicationName, int methodSignatureHashCode, int argsHashCode,
+								 String extensionStr) {
+		StringBuilder s = new StringBuilder(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode));
 		if (!StringUtils.isEmpty(applicationName)) {
-			s = applicationName + s;
+			s.insert(0,applicationName);
+
 		}
-		return DataUtil.hash(s);
+		if(!StringUtils.isEmpty(extensionStr)){
+			s.append(extensionStr);
+		}
+		return DataUtil.hash(s.toString());
 	}
 
 	/**
@@ -161,11 +175,11 @@ public interface DataHelper {
 	 * @return 缓存key
 	 */
 	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		String cacheKey = methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id;
-		if (StringUtils.isEmpty(applicationName)) {
-			return cacheKey;
+		StringBuilder cacheKey = new StringBuilder(methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id);
+		if(!StringUtils.isEmpty(applicationName)){
+			cacheKey.insert(0,KEY_SEPARATION_CHARACTER).insert(0,applicationName);
 		}
-		return applicationName + KEY_SEPARATION_CHARACTER + cacheKey;
+		return cacheKey.toString();
 	}
 
 	/**

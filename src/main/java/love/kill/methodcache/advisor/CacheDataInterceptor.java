@@ -48,8 +48,8 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
 		CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
 		boolean nullable = cacheData.nullable(); // 空返回
-
-		return dataHelper.getData(method, args, refresh, new DataHelper.ActualDataFunctional() {
+		String isolationSignal = dataHelper.threadLocal.get(); // 隔离标记
+		return dataHelper.getData(method, args, isolationSignal, refresh, new DataHelper.ActualDataFunctional() {
 			@Autowired
 			public Object getActualData() throws Throwable {
 				try {

@@ -1,9 +1,12 @@
 package love.kill.methodcache;
 
 import love.kill.methodcache.advisor.CacheDataInterceptor;
+import love.kill.methodcache.advisor.CacheIsolationInterceptor;
 import love.kill.methodcache.advisor.DeleteDataInterceptor;
 import love.kill.methodcache.annotation.CacheData;
+import love.kill.methodcache.annotation.CacheIsolation;
 import love.kill.methodcache.annotation.DeleteData;
+import love.kill.methodcache.annotation.EnableCacheIsolation;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
@@ -69,18 +72,9 @@ public class MethodcacheAutoConfiguration {
 		return new DefaultAdvisorAutoProxyCreator();
 	}
 
-	@Bean
-	public CacheDataInterceptor cacheDataInterceptor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
-		return new CacheDataInterceptor(methodcacheProperties, dataHelper);
-	}
 
 	@Bean
-	public DeleteDataInterceptor deleteDataInterceptor(DataHelper dataHelper) {
-		return new DeleteDataInterceptor(dataHelper);
-	}
-
-	@Bean
-	public StaticMethodMatcherPointcutAdvisor cacheDataPointcutAdvisor(CacheDataInterceptor cacheDataInterceptor, MethodcacheProperties methodcacheProperties) {
+	public StaticMethodMatcherPointcutAdvisor cacheDataPointcutAdvisor( MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
@@ -88,21 +82,48 @@ public class MethodcacheAutoConfiguration {
 				return method.isAnnotationPresent(CacheData.class) || targetClass.isAnnotationPresent(CacheData.class);
 			}
 		};
-		advisor.setAdvice(cacheDataInterceptor);
+		advisor.setAdvice(new CacheDataInterceptor(methodcacheProperties, dataHelper));
 		advisor.setOrder(methodcacheProperties.getOrder());
 		return advisor;
 	}
 
+
 	@Bean
-	public StaticMethodMatcherPointcutAdvisor deleteDataPointcutAdvisor2(DeleteDataInterceptor deleteDataInterceptor, MethodcacheProperties methodcacheProperties) {
+	public StaticMethodMatcherPointcutAdvisor deleteDataPointcutAdvisor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
-				// 拦截被 @CacheData 注解的方法
+				// 拦截被 @DeleteData 注解的方法
 				return method.isAnnotationPresent(DeleteData.class) || targetClass.isAnnotationPresent(DeleteData.class);
 			}
 		};
-		advisor.setAdvice(deleteDataInterceptor);
+		advisor.setAdvice(new DeleteDataInterceptor(dataHelper));
+		advisor.setOrder(methodcacheProperties.getOrder() - 2);
+		return advisor;
+	}
+
+	@Bean
+	public StaticMethodMatcherPointcutAdvisor cacheIsolationPointcutAdvisor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
+
+		CacheIsolationInterceptor cacheIsolationInterceptor = new CacheIsolationInterceptor(dataHelper);
+
+		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
+			@Override
+			public boolean matches(Method method, Class<?> targetClass) {
+
+				if(!method.isAnnotationPresent(CacheIsolation.class)){
+					return false;
+				}
+
+				EnableCacheIsolation enableCacheIsolation = targetClass.getAnnotation(EnableCacheIsolation.class);
+				if(enableCacheIsolation == null){
+					return false;
+				}
+				cacheIsolationInterceptor.getIsolationStrategyMap().put(targetClass, enableCacheIsolation.isolationStrategy());
+				return true;
+			}
+		};
+		advisor.setAdvice(cacheIsolationInterceptor);
 		advisor.setOrder(methodcacheProperties.getOrder() - 1);
 		return advisor;
 	}

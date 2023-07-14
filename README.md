@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.1</version>
+        <version>2.0.3</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -50,13 +50,16 @@
     6、nullable：缓存“null”(默认true)。方法返回了“null(包含异常导致)” 时，仍然缓存。
     7、remark：缓存备注。
 
+### 五、@EnableCacheIsolation 属性说明
 
-### 五、@DeleteData 属性说明
+    1、isolationStrategy：隔离级别，'N'表示不隔离，'T'表示线程隔离，默认 N。该注解为类上注解，隔离策略对当前类下，被 @CacheIsolation 注解的方法生效。
+
+### 六、@DeleteData 属性说明
 
     1、id：缓存标识。方法执行成功后，删除指定标识对应的缓存数据。
 
 
-### 六、项目配置说明
+### 七、项目配置说明
 
     # 方法缓存
     methodcache:
@@ -88,13 +91,13 @@
         port: 6378
 
 
-### 七、DEMO
+### 八、DEMO
 
     内存方式：https://github.com/Lycop/demo-for-methodcache-with-memory.git  
     Redis方式：https://github.com/Lycop/demo-for-methodcache-with-redis.git
 
 
-### 八、API
+### 九、API
 
 #### 1、查看缓存
     【地址】：/methodcache/cache
@@ -173,7 +176,7 @@
     【出参】：已清空的统计信息
 
 
-### 九、缓存存储介质
+### 十、缓存存储介质
 
 &emsp;&emsp;**MethodCache**支持“内存”和“Redis”两种方式作为缓存的存储介质，默认使用“内存“方式。  
 
@@ -185,7 +188,6 @@
 &emsp;&emsp;使用内存作为缓存存储介质，缓存数据和统计数据均会被保存在内存中。这就意味着当您的应用重启后，缓存的数据和统计数据将会消失。如果您对这些数据很重视，那么建议使用Redis方式。
 
 #### 2、Redis方式(推荐)
-
     methodcache:
       cache-type: R
     
@@ -193,7 +195,7 @@
 &emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，那么这个对象应该是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
 
 
-### 十、运行环境
+### 十一、运行环境
     Java 8+
     Spring Boot 2.x 及以上
 
@@ -214,3 +216,7 @@
     支持缓存删除(@DeleteData)
     优化统计信息查询速度
     修复统计耗时不准确问题
+
+#### 2.0.3(2023/07/12)
+    支持隔离策略：缓存数据可见范围。N(one，默认)表示不隔离；T(hread)表示线程隔离，数据仅对缓存时的线程可见。
+    修复BUG：高并发场景下，使用内存缓存方式，在移除过期数据时可能会出现ConcurrentModificationException异常。

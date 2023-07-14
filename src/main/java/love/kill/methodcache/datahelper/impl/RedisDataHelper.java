@@ -85,7 +85,9 @@ public class RedisDataHelper implements DataHelper {
 	}
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable) throws Throwable {
+	public Object getData(Method method, Object[] args, String isolationSignal, boolean refreshData,
+						  ActualDataFunctional actualDataFunctional, String id, String remark,
+						  boolean nullable) throws Throwable {
 
 		long startTime = new Date().getTime();
 
@@ -93,7 +95,7 @@ public class RedisDataHelper implements DataHelper {
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希
 		int argsHashCode = DataUtil.getArgsHashCode(args); // 方法入参哈希
 		String argsInfo = Arrays.toString(args); // 方法入参信息
-		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode); // 缓存哈希值，由"方法签名哈希" + "入参哈希"组成
+		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode, isolationSignal); // 缓存哈希值
 		if (StringUtils.isEmpty(id)) {
 			id = String.valueOf(methodSignature.hashCode());
 		}

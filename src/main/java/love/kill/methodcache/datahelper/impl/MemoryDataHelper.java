@@ -164,8 +164,9 @@ public class MemoryDataHelper implements DataHelper {
 
 
 	@Override
-	public Object getData(Method method, Object[] args, boolean refreshData, ActualDataFunctional actualDataFunctional, String id,
-						  String remark, boolean nullable) throws Throwable {
+	public Object getData(Method method, Object[] args, String isolationSignal, boolean refreshData,
+						  ActualDataFunctional actualDataFunctional, String id, String remark,
+						  boolean nullable) throws Throwable {
 
 		long startTime = new Date().getTime();
 
@@ -173,7 +174,7 @@ public class MemoryDataHelper implements DataHelper {
 		int methodSignatureHashCode = methodSignature.hashCode(); // 方法签名哈希值
 		int argsHashCode = DataUtil.getArgsHashCode(args); // 入参哈希值
 		String argsStr = Arrays.toString(args); // 入参
-		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode); // 缓存哈希值
+		int cacheHashCode = getCacheHashCode(applicationName, methodSignatureHashCode, argsHashCode, isolationSignal); // 缓存哈希值
 		if (StringUtils.isEmpty(id)) {
 			id = String.valueOf(methodSignature.hashCode());
 		}
