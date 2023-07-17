@@ -31,7 +31,7 @@
     methodcache:
         enable: true
 
-3、在接口或实现类方法上加上 **@cacheData** 注解
+3、在接口或实现类方法上加上 **@CacheData** 注解
     
     /**
 	 * 查询用户信息
