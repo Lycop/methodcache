@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.3</version>
+        <version>2.0.4</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
