@@ -1,15 +1,17 @@
 package love.kill.methodcache.advisor;
 
+import love.kill.methodcache.annotation.CacheIsolation;
 import love.kill.methodcache.constant.IsolationStrategy;
 import love.kill.methodcache.datahelper.DataHelper;
+import love.kill.methodcache.util.AnnotationUtil;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.util.StringUtils;
 
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * CacheIsolation 拦截通知
  *
@@ -21,27 +23,60 @@ public class CacheIsolationInterceptor implements MethodInterceptor {
 	private DataHelper dataHelper;
 
 	/**
-	 * 隔离策略
-	 * N：不隔离，T：线程隔离，默认 N
+	 * 代理类
+	 *
+	 * 值：<被代理类(或接口), 代理类>
 	 */
-	private Map<Class<?>, Character> isolationStrategyMap = new ConcurrentHashMap<>();
+	private static Map<Class<?> ,Class<?>> targetProxyClass = new HashMap<>();
+
 
 	public CacheIsolationInterceptor( DataHelper dataHelper) {
 		this.dataHelper = dataHelper;
 	}
 
 
-	public Map<Class<?>, Character> getIsolationStrategyMap() {
-		return isolationStrategyMap;
+	synchronized private static Class getProxyClass(Class<?> target){
+
+		for(Class<?> key : targetProxyClass.keySet()){
+			if(key.isAssignableFrom(target) || target.isAssignableFrom(key)){
+				return targetProxyClass.get(key);
+			}
+		}
+		return null;
+	}
+
+	synchronized public static boolean setProxyClass(Class<?> target, Class<?> proxy) {
+
+		Class proxyClass = getProxyClass(target);
+
+		if(proxyClass != null){
+			return proxyClass == proxy;
+		}
+
+		targetProxyClass.put(target, proxy);
+		return true;
 	}
 
 
 	@Override
 	public Object invoke(MethodInvocation methodInvocation) throws Throwable {
 
-		Class<?> declaringClass = methodInvocation.getMethod().getDeclaringClass();
-		Character strategy = isolationStrategyMap.get(declaringClass);
-		if (strategy != null && IsolationStrategy.THREAD == isolationStrategyMap.get(declaringClass)) {
+		Method method = methodInvocation.getMethod();
+		Object proxy = methodInvocation.getThis();
+		Class<?> target = method.getDeclaringClass();
+
+		if(getProxyClass(target) != proxy.getClass()){
+			return methodInvocation.proceed();
+		}
+
+		CacheIsolation cacheIsolation = AnnotationUtil.getAnnotation(method, proxy.getClass(), CacheIsolation.class);
+
+		if (cacheIsolation == null) {
+			return methodInvocation.proceed();
+		}
+
+
+		if (IsolationStrategy.THREAD == cacheIsolation.isolationStrategy()) {
 			String isolationSignal; // 隔离标记
 			boolean setIsolationSignal = false; // 当前方法设置了"隔离标记"
 			try {

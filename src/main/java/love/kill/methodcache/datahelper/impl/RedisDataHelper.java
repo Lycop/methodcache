@@ -350,7 +350,7 @@ public class RedisDataHelper implements DataHelper {
 				} catch (Throwable throwable) {
 					throwable.printStackTrace();
 					logger.info("\n ************* CacheData *************" +
-								"\n ** -- 异步更新数据至Redis发生异常 --- **" +
+								"\n ** ---- 更新数据至Redis发生异常 ---- **" +
 								"\n ** 异常信息：" + throwable.getMessage() +
 								"\n *************************************");
 				}
@@ -360,7 +360,7 @@ public class RedisDataHelper implements DataHelper {
 				try {
 					redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
 					log(String.format(	"\n ************* CacheData *************" +
-										"\n ** -------- 异步刷新缓存至Redis ------- **" +
+										"\n ** -------- 刷新缓存至Redis ------- **" +
 										"\n 执行对象：%s" +
 										"\n 方法签名：%s" +
 										"\n 方法入参：%s" +

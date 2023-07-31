@@ -451,10 +451,10 @@ public class MemoryDataHelper implements DataHelper {
 					throwable.printStackTrace();
 					String uuid = UUID.randomUUID().toString().trim().replaceAll("-", "");
 					logger.info("\n ************* CacheData *************" +
-							"\n ** ---- 异步更新数据至内存发生异常 --- **" +
-							"\n 异常信息(UUID=" + uuid + ")：" + throwable.getMessage() + "\n" +
-							printStackTrace(throwable.getStackTrace()) +
-							"\n *************************************");
+								"\n ** ----- 更新数据至内存发生异常 ----- **" +
+								"\n 异常信息(UUID=" + uuid + ")：" + throwable.getMessage() + "\n" +
+								printStackTrace(throwable.getStackTrace()) +
+								"\n *************************************");
 				}
 			}
 
@@ -466,7 +466,7 @@ public class MemoryDataHelper implements DataHelper {
 					setDataToMemory(applicationName, methodSignature, argsStr, cacheHashCode,
 							saveData != null ? saveData : new NullObject() , saveExpirationTime, id, remark);
 					log(String.format(	"\n ************* CacheData *************" +
-										"\n ** --------- 异步刷新缓存至内存 -------- **" +
+										"\n ** --------- 刷新缓存至内存 -------- **" +
 										"\n ** 执行对象：%s" +
 										"\n ** 方法签名：%s" +
 										"\n ** 方法入参：%s" +

@@ -6,7 +6,6 @@ import love.kill.methodcache.advisor.DeleteDataInterceptor;
 import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.annotation.CacheIsolation;
 import love.kill.methodcache.annotation.DeleteData;
-import love.kill.methodcache.annotation.EnableCacheIsolation;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
@@ -115,24 +114,18 @@ public class MethodcacheAutoConfiguration {
 		return advisor;
 	}
 
+
 	@Bean
 	public StaticMethodMatcherPointcutAdvisor cacheIsolationPointcutAdvisor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 
-		CacheIsolationInterceptor cacheIsolationInterceptor = new CacheIsolationInterceptor(dataHelper);
+		final CacheIsolationInterceptor cacheIsolationInterceptor = new CacheIsolationInterceptor(dataHelper);
 
 		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
 
-				if (!method.isAnnotationPresent(CacheIsolation.class)) {
-					return false;
-				}
-				EnableCacheIsolation enableCacheIsolation = targetClass.getAnnotation(EnableCacheIsolation.class);
-				if (enableCacheIsolation == null) {
-					return false;
-				}
-				cacheIsolationInterceptor.getIsolationStrategyMap().put(targetClass, enableCacheIsolation.isolationStrategy());
-				return true;
+				return AnnotationUtil.getAnnotation(method, targetClass, CacheIsolation.class) != null && // 拦截被 @CacheIsolation 注解的方法
+						CacheIsolationInterceptor.setProxyClass(method.getDeclaringClass(), targetClass);
 			}
 		};
 		advisor.setAdvice(cacheIsolationInterceptor);
