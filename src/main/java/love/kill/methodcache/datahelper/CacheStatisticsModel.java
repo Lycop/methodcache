@@ -143,7 +143,8 @@ public class CacheStatisticsModel implements Serializable {
 	private String stackTraceOfLastException = "";
 
 
-	public CacheStatisticsModel(String cacheKey, String methodSignature, int methodSignatureHashCode, String id, String remark) {
+	public CacheStatisticsModel(String cacheKey, String methodSignature, int methodSignatureHashCode, String id,
+								String remark) {
 		this.cacheKey = cacheKey;
 		this.methodSignature = methodSignature;
 		this.methodSignatureHashCode = methodSignatureHashCode;

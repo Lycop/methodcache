@@ -10,6 +10,7 @@ import love.kill.methodcache.annotation.EnableCacheIsolation;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.datahelper.impl.MemoryDataHelper;
 import love.kill.methodcache.datahelper.impl.RedisDataHelper;
+import love.kill.methodcache.util.AnnotationUtil;
 import love.kill.methodcache.util.RedisUtil;
 import org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator;
 import org.springframework.aop.support.StaticMethodMatcherPointcutAdvisor;
@@ -38,7 +39,9 @@ public class MethodcacheAutoConfiguration {
 	@ConditionalOnProperty(prefix = "methodcache", name = "cache-type", havingValue = "R")
 	@ConditionalOnMissingBean
 	@ConditionalOnClass({RedisTemplate.class})
-	DataHelper redisDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, RedisTemplate redisTemplate) {
+	DataHelper redisDataHelper(MethodcacheProperties methodcacheProperties,
+							   SpringApplicationProperties springProperties,
+							   RedisTemplate redisTemplate) {
 
 		RedisTemplate<Object, Object> cacheRedisTemplate = new RedisTemplate<>();
 		cacheRedisTemplate.setConnectionFactory(redisTemplate.getConnectionFactory());
@@ -62,7 +65,8 @@ public class MethodcacheAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties, SpringApplicationProperties springProperties, @Nullable MemoryMonitor memoryMonitor) {
+	DataHelper memoryDataHelper(MethodcacheProperties methodcacheProperties,
+								SpringApplicationProperties springProperties, @Nullable MemoryMonitor memoryMonitor) {
 		return new MemoryDataHelper(methodcacheProperties, springProperties, memoryMonitor);
 	}
 
@@ -74,30 +78,39 @@ public class MethodcacheAutoConfiguration {
 
 
 	@Bean
-	public StaticMethodMatcherPointcutAdvisor cacheDataPointcutAdvisor( MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
+	public StaticMethodMatcherPointcutAdvisor cacheDataPointcutAdvisor(MethodcacheProperties methodcacheProperties,
+																	   DataHelper dataHelper) {
+
+		final CacheDataInterceptor cacheDataInterceptor = new CacheDataInterceptor(methodcacheProperties, dataHelper);
+
 		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
-				// 拦截被 @CacheData 注解的方法
-				return method.isAnnotationPresent(CacheData.class) || targetClass.isAnnotationPresent(CacheData.class);
+				return AnnotationUtil.getAnnotation(method, targetClass, CacheData.class) != null && // 拦截被 @CacheData 注解的方法
+						CacheDataInterceptor.setProxyClass(method.getDeclaringClass(), targetClass);
 			}
 		};
-		advisor.setAdvice(new CacheDataInterceptor(methodcacheProperties, dataHelper));
+		advisor.setAdvice(cacheDataInterceptor);
 		advisor.setOrder(methodcacheProperties.getOrder());
 		return advisor;
 	}
 
 
 	@Bean
-	public StaticMethodMatcherPointcutAdvisor deleteDataPointcutAdvisor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
+	public StaticMethodMatcherPointcutAdvisor deleteDataPointcutAdvisor(MethodcacheProperties methodcacheProperties,
+																		DataHelper dataHelper) {
+
+		final DeleteDataInterceptor deleteDataInterceptor = new DeleteDataInterceptor(methodcacheProperties, dataHelper);
+
 		StaticMethodMatcherPointcutAdvisor advisor = new StaticMethodMatcherPointcutAdvisor() {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
-				// 拦截被 @DeleteData 注解的方法
-				return method.isAnnotationPresent(DeleteData.class) || targetClass.isAnnotationPresent(DeleteData.class);
+
+				return AnnotationUtil.getAnnotation(method, targetClass, DeleteData.class) != null && // 拦截被 @DeleteData 注解的方法
+						DeleteDataInterceptor.setProxyClass(method.getDeclaringClass(), targetClass);
 			}
 		};
-		advisor.setAdvice(new DeleteDataInterceptor(dataHelper));
+		advisor.setAdvice(deleteDataInterceptor);
 		advisor.setOrder(methodcacheProperties.getOrder() - 2);
 		return advisor;
 	}
@@ -111,12 +124,11 @@ public class MethodcacheAutoConfiguration {
 			@Override
 			public boolean matches(Method method, Class<?> targetClass) {
 
-				if(!method.isAnnotationPresent(CacheIsolation.class)){
+				if (!method.isAnnotationPresent(CacheIsolation.class)) {
 					return false;
 				}
-
 				EnableCacheIsolation enableCacheIsolation = targetClass.getAnnotation(EnableCacheIsolation.class);
-				if(enableCacheIsolation == null){
+				if (enableCacheIsolation == null) {
 					return false;
 				}
 				cacheIsolationInterceptor.getIsolationStrategyMap().put(targetClass, enableCacheIsolation.isolationStrategy());

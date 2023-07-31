@@ -42,7 +42,7 @@ public class CacheIsolationInterceptor implements MethodInterceptor {
 		Class<?> declaringClass = methodInvocation.getMethod().getDeclaringClass();
 		Character strategy = isolationStrategyMap.get(declaringClass);
 		if (strategy != null && IsolationStrategy.THREAD == isolationStrategyMap.get(declaringClass)) {
-			String isolationSignal = null; // 隔离标记
+			String isolationSignal; // 隔离标记
 			boolean setIsolationSignal = false; // 当前方法设置了"隔离标记"
 			try {
 				isolationSignal = dataHelper.threadLocal.get();

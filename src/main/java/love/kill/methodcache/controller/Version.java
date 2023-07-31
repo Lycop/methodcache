@@ -20,8 +20,8 @@ public class Version {
 	@GetMapping
 	public Map version() {
 		Map<String, String> versionMap = new HashMap<>();
-		versionMap.put("version", "2.0.2");
-		versionMap.put("release time", "2022-09-19");
+		versionMap.put("version", "2.0.4");
+		versionMap.put("release time", "2023-07-27");
 		return versionMap;
 	}
 }

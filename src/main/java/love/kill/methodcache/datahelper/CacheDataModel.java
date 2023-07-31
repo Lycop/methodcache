@@ -69,7 +69,8 @@ public class CacheDataModel implements Serializable {
 	private long instanceSize = 0L;
 
 
-	public CacheDataModel(String applicationName, String methodSignature, String args, int cacheHashCode, Object data, long expireTime) {
+	public CacheDataModel(String applicationName, String methodSignature, String args, int cacheHashCode, Object data,
+						  long expireTime) {
 		this.applicationName = applicationName;
 		this.methodSignature = methodSignature;
 		this.args = args;

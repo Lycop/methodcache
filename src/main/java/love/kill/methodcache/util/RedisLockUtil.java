@@ -70,7 +70,8 @@ public class RedisLockUtil {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(reentrantLockScript);
 		defaultRedisScript.setResultType(String.class);
-		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value, String.valueOf(expireTime));
+		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer,
+				Collections.singletonList(REDIS_LOCK_PREFIX + key), value, String.valueOf(expireTime));
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 	}
 
@@ -87,7 +88,8 @@ public class RedisLockUtil {
 		DefaultRedisScript<String> defaultRedisScript = new DefaultRedisScript();
 		defaultRedisScript.setScriptText(releaseLockScript);
 		defaultRedisScript.setResultType(String.class);
-		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer, Collections.singletonList(REDIS_LOCK_PREFIX + key), value);
+		String result = (String) redisTemplate.execute(defaultRedisScript, argsSerializer, resultSerializer,
+				Collections.singletonList(REDIS_LOCK_PREFIX + key), value);
 		return REDIS_RESULT_OK.equals(result) || REDIS_RESULT_REENTRANT.equals(result);
 
 	}

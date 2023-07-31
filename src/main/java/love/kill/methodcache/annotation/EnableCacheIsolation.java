@@ -20,6 +20,8 @@ public @interface EnableCacheIsolation {
 	/**
 	 * 隔离策略
 	 * N：不隔离，T：线程隔离，默认 N
+	 *
+	 * @return 隔离策略
 	 */
 	char isolationStrategy() default 'N';
 }

@@ -41,7 +41,8 @@ public class Cache {
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping
-	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "hashcode", required = false) String hashCode) {
+	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id,
+												   @RequestParam(value = "hashcode", required = false) String hashCode) {
 		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(hashCode)) {
 			return new HashMap<>();
 		}

@@ -33,7 +33,9 @@ public class Statistics {
 	 * @return 所有匹配成功的缓存
 	 */
 	@GetMapping
-	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match, @RequestParam(value = "order_by", required = false) String orderBy, @RequestParam(value = "order_type", required = false) String orderType) {
+	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match,
+												@RequestParam(value = "order_by", required = false) String orderBy,
+												@RequestParam(value = "order_type", required = false) String orderType) {
 
 		Map<String, CacheStatisticsModel> statistics = dataHelper.getStatistics(match);
 
@@ -59,7 +61,8 @@ public class Statistics {
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping
-	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id, @RequestParam(value = "method", required = false) String methodSignature) {
+	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id,
+												   @RequestParam(value = "method", required = false) String methodSignature) {
 		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(methodSignature)) {
 			return new HashMap<>();
 		}
@@ -96,7 +99,8 @@ public class Statistics {
 		return transferStatistics(wipeStatistics, resultMap);
 	}
 
-	private Map<String, Map<String, Object>> transferStatistics(Map<String, CacheStatisticsModel> statistics, Map<String, Map<String, Object>> targetMap){
+	private Map<String, Map<String, Object>> transferStatistics(Map<String, CacheStatisticsModel> statistics,
+																Map<String, Map<String, Object>> targetMap){
 		for (String methodSignature : statistics.keySet()) {
 			CacheStatisticsModel statisticsModel = statistics.get(methodSignature);
 			Map<String, Object> statisticsInfo = new HashMap<>();

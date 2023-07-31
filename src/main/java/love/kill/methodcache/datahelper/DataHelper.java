@@ -50,6 +50,7 @@ public interface DataHelper {
 	/**
 	 * 获取数据
 	 *
+	 * @param proxy                代理对象
 	 * @param method               方法
 	 * @param args                 请求参数
 	 * @param isolationSignal      隔离标记
@@ -61,8 +62,9 @@ public interface DataHelper {
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
 	 */
-	Object getData(Method method, Object[] args, String isolationSignal, boolean refreshData, ActualDataFunctional actualDataFunctional,
-				   String id, String remark, boolean nullable) throws Throwable;
+	Object getData(Object proxy, Method method, Object[] args, String isolationSignal, boolean refreshData,
+				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable)
+			throws Throwable;
 
 	/**
 	 * 请求模型
@@ -175,7 +177,8 @@ public interface DataHelper {
 	 * @return 缓存key
 	 */
 	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		StringBuilder cacheKey = new StringBuilder(methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id);
+		StringBuilder cacheKey = new StringBuilder(methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode +
+				KEY_SEPARATION_CHARACTER + id);
 		if(!StringUtils.isEmpty(applicationName)){
 			cacheKey.insert(0,KEY_SEPARATION_CHARACTER).insert(0,applicationName);
 		}
@@ -190,7 +193,8 @@ public interface DataHelper {
 	 * @param select         过滤值
 	 */
 	@SuppressWarnings("unchecked")
-	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel, String select) {
+	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel,
+								 String select) {
 		if (!StringUtils.isEmpty(select)) {
 			String args = cacheDataModel.getArgs();
 			if (!StringUtils.isEmpty(args) && !args.contains(select)) {
@@ -205,7 +209,8 @@ public interface DataHelper {
 			return map;
 		});
 
-		List<Map<String, Object>> cacheInfoList = (List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
+		List<Map<String, Object>> cacheInfoList =
+				(List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
 
 		Map<String, Object> cacheInfo = new HashMap<>();
 		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
@@ -252,10 +257,12 @@ public interface DataHelper {
 	 * @param cacheStatisticsNode  缓存节点信息
 	 * @return 缓存统计信息
 	 */
-	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel, CacheStatisticsNode cacheStatisticsNode) {
+	default CacheStatisticsModel increaseStatistics(CacheStatisticsModel cacheStatisticsModel,
+													CacheStatisticsNode cacheStatisticsNode) {
 		if (cacheStatisticsModel == null) {
-			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getCacheKey(), cacheStatisticsNode.getMethodSignature(),
-					cacheStatisticsNode.getMethodSignatureHashCode(), cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
+			cacheStatisticsModel = new CacheStatisticsModel(cacheStatisticsNode.getCacheKey(),
+					cacheStatisticsNode.getMethodSignature(), cacheStatisticsNode.getMethodSignatureHashCode(),
+					cacheStatisticsNode.getId(), cacheStatisticsNode.getRemark());
 		}
 
 		boolean hit = cacheStatisticsNode.isHit(); // 命中
@@ -302,13 +309,15 @@ public interface DataHelper {
 	 * @param startTimestamp          开始时间
 	 * @param endTimestamp    		  结束时间
 	 */
-	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-								  int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
-								  long startTimestamp, long endTimestamp) {
+	default void recordStatistics(String cacheKey, String methodSignature, int methodSignatureHashCode, String args,
+								  int argsHashCode, int cacheHashCode, String id, String remark, boolean hit,
+								  boolean invokeException, String stackTraceOfException, long startTimestamp,
+								  long endTimestamp) {
 		recordStatisticsExecutorService.execute(() -> {
 			try {
-				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode, args, argsHashCode,
-						cacheHashCode, id, remark, hit, invokeException, stackTraceOfException, startTimestamp, endTimestamp));
+				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode,
+						args, argsHashCode, cacheHashCode, id, remark, hit, invokeException, stackTraceOfException,
+						startTimestamp, endTimestamp));
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -333,7 +342,8 @@ public interface DataHelper {
 
 		for (String key : cacheStatistics.keySet()) {
 			CacheStatisticsModel statisticsModel = cacheStatistics.get(key);
-			if (!StringUtils.isEmpty(id) && id.equals(statisticsModel.getId()) || !StringUtils.isEmpty(methodSignature) && methodSignature.equals(key)) {
+			if (!StringUtils.isEmpty(id) && id.equals(statisticsModel.getId()) ||
+					!StringUtils.isEmpty(methodSignature) && methodSignature.equals(key)) {
 				resultMap.put(key, statisticsModel);
 			}
 		}
@@ -393,20 +403,18 @@ public interface DataHelper {
 	 * @return 异常信息
 	 */
 	default String printStackTrace(Throwable throwable, String uuid) {
-		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" + Arrays.toString(throwable.getStackTrace()) + "]";
+		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" +
+				Arrays.toString(throwable.getStackTrace()) + "]";
 	}
 
 	/**
-	 * 对象为空判定
+	 * 对象不为空
 	 *
 	 * @param o        被判定的对象
 	 * @param nullable 允许空数据
 	 * @return 对象为空对象
 	 */
 	default boolean isNotNull(Object o, boolean nullable) {
-		if (o instanceof NullObject) {
-			return false;
-		}
 		return o != null || nullable;
 	}
 
@@ -488,9 +496,10 @@ public interface DataHelper {
 		 */
 		private long endTimestamp;
 
-		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args, int argsHashCode,
-								   int cacheHashCode, String id, String remark, boolean hit, boolean invokeException, String stackTraceOfException,
-								   long startTimestamp, long endTimestamp) {
+		public CacheStatisticsNode(String cacheKey, String methodSignature, int methodSignatureHashCode, String args,
+								   int argsHashCode, int cacheHashCode, String id, String remark, boolean hit,
+								   boolean invokeException, String stackTraceOfException,  long startTimestamp,
+								   long endTimestamp) {
 			this.cacheKey = cacheKey;
 			this.methodSignature = methodSignature;
 			this.methodSignatureHashCode = methodSignatureHashCode;

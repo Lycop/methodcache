@@ -54,8 +54,10 @@ public class MemoryMonitor {
 	public MemoryMonitor(MethodcacheProperties methodcacheProperties) {
 
 		logger.info("开启内存监控...");
-		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
-		this.memoryThreshold = new BigDecimal(methodcacheProperties.getMemoryThreshold()).divide(new BigDecimal(100), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
+		this.gcThreshold = new BigDecimal(methodcacheProperties.getGcThreshold()).divide(new BigDecimal(100), 2,
+				BigDecimal.ROUND_HALF_UP).doubleValue();
+		this.memoryThreshold = new BigDecimal(methodcacheProperties.getMemoryThreshold()).divide(new BigDecimal(100), 2,
+				BigDecimal.ROUND_HALF_UP).doubleValue();
 		logger.info("内存告警阈值=" + memoryThreshold + "，GC阈值=" + gcThreshold);
 		setUsageThreshold();
 		NotificationEmitter ne = (NotificationEmitter) memBean;
