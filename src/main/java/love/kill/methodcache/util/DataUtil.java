@@ -98,8 +98,8 @@ public class DataUtil {
 	}
 
 	private static boolean isInternal(Class clazz) {
-		return (Map.class == clazz) ||
-				(List.class == clazz) ||
+		return isMap(clazz) ||
+				isCollection(clazz) ||
 				(String.class == clazz) ||
 				(Short.class == clazz) ||
 				(Integer.class == clazz) ||
@@ -108,6 +108,14 @@ public class DataUtil {
 				(Double.class == clazz) ||
 				(Character.class == clazz) ||
 				(Boolean.class == clazz);
+	}
+
+	private static boolean isMap(Class clazz){
+		return Map.class.isAssignableFrom(clazz);
+	}
+
+	private static boolean isCollection(Class clazz){
+		return Collection.class.isAssignableFrom(clazz);
 	}
 
 	public static int hash(Object key) {
