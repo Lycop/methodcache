@@ -69,17 +69,28 @@ public @interface CacheData {
 	CapitalExpiration capitalExpiration() default CapitalExpiration.SECOND;
 
 	/**
-	 * 备注
-	 *
-	 * @return 缓存备注
-	 */
-	String remark() default "";
-
-	/**
 	 * 缓存null
 	 * 默认为true，当请求结果返回为null依旧缓存；否则不缓存
 	 *
 	 * @return 是否缓存null
 	 */
 	boolean nullable() default true;
+
+	/**
+	 * 共享缓存数据
+	 *
+	 * false(默认)时，缓存命中后返回的数据是独享的，修改数据不影响其他的线程得到的数据，内存占用率较高；
+	 * true时，缓存命中后返回的数据是共享的，修改数据会影响其他的线程得到的数据，内存占用率较低；
+	 *
+	 * @return 缓存数据为共享
+	 * */
+	boolean shared() default false;
+
+	/**
+	 * 备注
+	 *
+	 * @return 缓存备注
+	 */
+	String remark() default "";
+
 }

@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.util.Base64;
 
 /**
  * 序列化工具类
@@ -49,5 +50,25 @@ public class SerializeUtil {
 			logger.error("反序列化时发生异常：" + e.getMessage());
 			return null;
 		}
+	}
+
+	/**
+	 * 字节数组转字符串
+	 *
+	 * @param bytes 字节数组
+	 * @return 字符串
+	 */
+	public static String byteArray2String(byte[] bytes) {
+		return Base64.getEncoder().encodeToString(bytes);
+	}
+
+	/**
+	 * 字符串转字节数组
+	 *
+	 * @param str 字符串
+	 * @return 字节数组
+	 */
+	public static byte[] string2ByteArray(String str) {
+		return Base64.getDecoder().decode(str);
 	}
 }

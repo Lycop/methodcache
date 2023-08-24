@@ -90,6 +90,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		long behindExpiration = cacheData.behindExpiration(); //  数据过期宽限期，毫秒
 		CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
 		boolean nullable = cacheData.nullable(); // 空返回
+		boolean shared = cacheData.shared(); // 共享式缓存
 		String isolationSignal = dataHelper.threadLocal.get(); // 隔离标记
 		return dataHelper.getData(proxy, methodInvocation.getMethod(),
 				methodInvocation.getArguments(), isolationSignal, refresh, new DataHelper.ActualDataFunctional() {
@@ -107,7 +108,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 					public long getExpirationTime() {
 						return expirationTime(expiration, behindExpiration, capitalExpiration);
 					}
-				}, cacheData.id(), cacheData.remark(), nullable);
+				}, cacheData.id(), cacheData.remark(), nullable, shared);
 	}
 
 

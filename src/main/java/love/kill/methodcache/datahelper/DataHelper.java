@@ -5,10 +5,12 @@ import love.kill.methodcache.util.ThreadPoolBuilder;
 import org.springframework.util.StringUtils;
 
 import java.io.Serializable;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * 数据缓存
@@ -41,30 +43,22 @@ public interface DataHelper {
 	 */
 	ExecutorService recordStatisticsExecutorService = ThreadPoolBuilder.buildDefaultThreadPool();
 
-
 	/**
 	 * 线程数据
 	 * */
 	ThreadLocal<String> threadLocal = new ThreadLocal<>();
 
+
 	/**
-	 * 获取数据
-	 *
-	 * @param proxy                代理对象
-	 * @param method               方法
-	 * @param args                 请求参数
-	 * @param isolationSignal      隔离标记
-	 * @param refreshData          是否刷新数据
-	 * @param actualDataFunctional 请求模型
-	 * @param id                   缓存ID
-	 * @param remark               缓存备注
-	 * @param nullable             缓存null
-	 * @return 数据
-	 * @throws Exception 获取数据时发生异常
+	 * 共享式缓存数据
+	 * 内容：《方法签名,《缓存哈希值,数据》》
 	 */
-	Object getData(Object proxy, Method method, Object[] args, String isolationSignal, boolean refreshData,
-				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable)
-			throws Throwable;
+	Map<String, Map<Integer, WeakReference<CacheDataModel>>> sharedCacheData = new ConcurrentHashMap<>();
+
+	/**
+	 * 共享式缓存数据锁
+	 */
+	ReentrantReadWriteLock sharedCacheDataLock = new ReentrantReadWriteLock();
 
 	/**
 	 * 请求模型
@@ -84,6 +78,92 @@ public interface DataHelper {
 		 * @return 过期时间
 		 */
 		long getExpirationTime();
+	}
+
+	/**
+	 * 获取数据
+	 *
+	 * @param proxy                代理对象
+	 * @param method               方法
+	 * @param args                 请求参数
+	 * @param isolationSignal      隔离标记
+	 * @param refreshData          是否刷新数据
+	 * @param actualDataFunctional 请求模型
+	 * @param id                   缓存ID
+	 * @param remark               缓存备注
+	 * @param nullable             缓存null
+	 * @param shared               共享式数据
+	 * @return 数据
+	 * @throws Exception 获取数据时发生异常
+	 */
+	Object getData(Object proxy, Method method, Object[] args, String isolationSignal, boolean refreshData,
+				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable,
+				   boolean shared) throws Throwable;
+
+
+	/**
+	 * 获取共享数据
+	 *
+	 * @param methodSignature 方法签名
+	 * @param cacheHashCode   缓存哈希值
+	 * @return 缓存数据
+	 */
+	static CacheDataModel getSharedData(String methodSignature, Integer cacheHashCode) {
+
+		if(StringUtils.isEmpty(methodSignature) || StringUtils.isEmpty(cacheHashCode)){
+			return null;
+		}
+
+		try {
+			sharedCacheDataLock.readLock().lock();
+			Map<Integer, WeakReference<CacheDataModel>> cacheDataModelMap = sharedCacheData.get(methodSignature);
+			if (cacheDataModelMap != null) {
+				return cacheDataModelMap.get(cacheHashCode).get();
+			}
+		}finally {
+			sharedCacheDataLock.readLock().unlock();
+		}
+
+		return null;
+	}
+
+	/**
+	 * 保存共享数据
+	 *
+	 * @param cacheDataModel 缓存数据
+	 * @return 缓存数据
+	 */
+	static CacheDataModel setSharedData(CacheDataModel cacheDataModel) {
+
+		try {
+			sharedCacheDataLock.writeLock().lock();
+			String methodSignature = cacheDataModel.getMethodSignature();
+			int cacheHashCode = cacheDataModel.getCacheHashCode();
+
+			Map<Integer, WeakReference<CacheDataModel>> cacheDataModelMap = sharedCacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
+			cacheDataModelMap.put(cacheHashCode, new WeakReference<>(cacheDataModel));
+
+		} finally {
+			sharedCacheDataLock.writeLock().unlock();
+		}
+
+		return cacheDataModel;
+	}
+
+	/**
+	 * 决定数据
+	 * 决定是返回原数据，还是共享数据
+	 *
+	 * @param cacheDataModel 实际数据
+	 * @return 决定后的数据
+	 * */
+	static CacheDataModel decisionCacheDataModel(CacheDataModel cacheDataModel) {
+		CacheDataModel sharedData = DataHelper.getSharedData(cacheDataModel.getMethodSignature(), cacheDataModel.getCacheHashCode());
+		if(sharedData == null || cacheDataModel.getCacheTime() != sharedData.getCacheTime()){
+			return DataHelper.setSharedData(cacheDataModel);
+		}
+		cacheDataModel = null; // help GC
+		return sharedData;
 	}
 
 	/**

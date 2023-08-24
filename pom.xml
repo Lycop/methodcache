@@ -5,7 +5,7 @@
 
 	<groupId>love.kill</groupId>
 	<artifactId>methodcache-spring-boot-starter</artifactId>
-	<version>2.0.4</version>
+	<version>2.0.5</version>
 	<name>methodcache-spring-boot-starter</name>
 	<description>Method cache project for Spring Boot</description>
 	<url>https://github.com/Lycop/methodcache</url>

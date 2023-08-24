@@ -102,6 +102,10 @@ public class CacheDataModel implements Serializable {
 	}
 
 
+	public long getCacheTime(){
+		return cacheTime;
+	}
+
 	public String getFormatCacheTime() {
 		return formatDate(cacheTime);
 	}

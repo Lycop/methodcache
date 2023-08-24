@@ -89,7 +89,7 @@ public class RedisDataHelper implements DataHelper {
 	@Override
 	public Object getData(Object proxy, Method method, Object[] args, String isolationSignal, boolean refreshData,
 						  ActualDataFunctional actualDataFunctional, String id, String remark,
-						  boolean nullable) throws Throwable {
+						  boolean nullable, boolean shared) throws Throwable {
 
 		long startTime = new Date().getTime();
 		String methodSignature = method.toGenericString(); // 方法签名
@@ -102,7 +102,7 @@ public class RedisDataHelper implements DataHelper {
 		}
 		String cacheKey = getCacheKey(applicationName, methodSignature, cacheHashCode, id); // 构建缓存key
 		String dataLockKey = getIntactDataLockKey(cacheKey); // 数据锁
-		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false);
+		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false, shared);
 		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
 		log(String.format(	"\n ************* CacheData *************" +
 							"\n ** ------- 从Redis获取缓存 -------- **" +
@@ -122,7 +122,7 @@ public class RedisDataHelper implements DataHelper {
 			try {
 				// 缓存未命中或数据已过期，加锁再次尝试获取
 				redisUtil.lock(dataLockKey, Integer.MAX_VALUE, true);
-				cacheDataModel = getDataFromRedis(cacheKey, false);
+				cacheDataModel = getDataFromRedis(cacheKey, false, shared);
 			}finally {
 				redisUtil.unlock(dataLockKey);
 			}
@@ -145,9 +145,9 @@ public class RedisDataHelper implements DataHelper {
 
 			if (!hit) {
 				// 发起实际请求
-				Object data;
+				Object actualData;
 				try {
-					data = actualDataFunctional.getActualData();
+					actualData = actualDataFunctional.getActualData();
 					log(String.format(	"\n ************* CacheData *************" +
 										"\n ** ----------- 发起请求 ----------- **" +
 									    "\n ** 执行对象：%s" +
@@ -158,7 +158,7 @@ public class RedisDataHelper implements DataHelper {
 							proxy,
 							methodSignature,
 							argsInfo,
-							data));
+							actualData));
 				} catch (Throwable throwable) {
 					throwable.printStackTrace();
 					String uuid = UUID.randomUUID().toString().trim().replaceAll("-", "");
@@ -182,12 +182,12 @@ public class RedisDataHelper implements DataHelper {
 							cacheHashCode, id, remark, hit, false, "", startTime, new Date().getTime());
 				}
 
-				if (isNotNull(data, nullable)) {
+				if (isNotNull(actualData, nullable)) {
 					long expirationTime = actualDataFunctional.getExpirationTime();
-					refreshData(proxy, data, expirationTime, applicationName, dataLockKey, actualDataFunctional, nullable,
-							cacheKey, methodSignature, argsInfo, cacheHashCode, id, remark);
+					refreshData(proxy, actualData, expirationTime, applicationName, dataLockKey, actualDataFunctional,
+							nullable, cacheKey, methodSignature, argsInfo, cacheHashCode, id, remark);
 				}
-				return data;
+				return actualData;
 			}
 
 		}
@@ -427,11 +427,13 @@ public class RedisDataHelper implements DataHelper {
 	/**
 	 * 从Redis获取数据
 	 *
-	 * @param cacheKey      缓存key
-	 * @param intactKeyFlag 完整key标识
+	 * @param cacheKey      	缓存key
+	 * @param intactKeyFlag 	完整key标识
+	 * @param shared 			共享式数据
 	 * @result 缓存数据
 	 */
-	private CacheDataModel getDataFromRedis(String cacheKey, boolean intactKeyFlag) {
+	private CacheDataModel getDataFromRedis(String cacheKey, boolean intactKeyFlag, boolean shared) {
+
 		String key;
 		if (intactKeyFlag) {
 			key = cacheKey;
@@ -440,13 +442,23 @@ public class RedisDataHelper implements DataHelper {
 		}
 
 		Object objectByteString = redisUtil.get(key);
-		if (objectByteString instanceof String) {
-			Object dataModel = SerializeUtil.deserialize(string2ByteArray((String) objectByteString));
-			if (dataModel instanceof CacheDataModel) {
-				return (CacheDataModel) dataModel;
-			}
+		if (!(objectByteString instanceof String)) {
+			return null;
 		}
-		return null;
+
+		Object dataModel = SerializeUtil.deserialize(SerializeUtil.string2ByteArray((String) objectByteString));
+		if (!(dataModel instanceof CacheDataModel)) {
+			return null;
+		}
+
+		CacheDataModel cacheDataModel = (CacheDataModel) dataModel;
+
+		if(!shared){
+			// 独享数据
+			return cacheDataModel;
+		}
+
+		return DataHelper.decisionCacheDataModel(cacheDataModel);
 	}
 
 	/**
@@ -494,7 +506,7 @@ public class RedisDataHelper implements DataHelper {
 
 		for (Object object : objects) {
 			if (object instanceof String) {
-				Object model = SerializeUtil.deserialize(string2ByteArray((String) object));
+				Object model = SerializeUtil.deserialize(SerializeUtil.string2ByteArray((String) object));
 				if (model instanceof CacheStatisticsModel) {
 					CacheStatisticsModel statisticsModel = (CacheStatisticsModel) model;
 					resultMap.put(statisticsModel.getMethodSignature(), statisticsModel);
@@ -535,7 +547,7 @@ public class RedisDataHelper implements DataHelper {
 		for (String cacheKey : cacheKeys) {
 			executorService.execute(() -> {
 				try {
-					dataModelSet.add(getDataFromRedis(cacheKey, true));
+					dataModelSet.add(getDataFromRedis(cacheKey, true, false));
 				} catch (Exception e) {
 					logger.error("从Redis批量查询缓存出现异常：" + e.getMessage());
 				} finally {
@@ -581,7 +593,7 @@ public class RedisDataHelper implements DataHelper {
 	 * 这里会对返回值进行反序列化
 	 */
 	private void setDataToRedis(String cacheKey, CacheDataModel cacheDataModel, long timeout) {
-		redisUtil.set(getIntactCacheDataKey(cacheKey), byteArray2String(SerializeUtil.serizlize(cacheDataModel)), timeout);
+		redisUtil.set(getIntactCacheDataKey(cacheKey), SerializeUtil.byteArray2String(SerializeUtil.serizlize(cacheDataModel)), timeout);
 	}
 
 	/**
@@ -601,7 +613,7 @@ public class RedisDataHelper implements DataHelper {
 	 */
 	private void setStatisticsToRedis(String methodSignature, CacheStatisticsModel cacheStatisticsModel) {
 		redisUtil.hset(METHOD_CACHE_STATISTICS, methodSignature,
-				byteArray2String(SerializeUtil.serizlize(cacheStatisticsModel)));
+				SerializeUtil.byteArray2String(SerializeUtil.serizlize(cacheStatisticsModel)));
 	}
 
 	/**
@@ -613,20 +625,6 @@ public class RedisDataHelper implements DataHelper {
 	 */
 	private void deleteStatisticsFromRedis(String methodSignature) {
 		redisUtil.hdel(METHOD_CACHE_STATISTICS, methodSignature);
-	}
-
-	/**
-	 * 字节数组转字符串
-	 */
-	private String byteArray2String(byte[] bytes) {
-		return Base64.getEncoder().encodeToString(bytes);
-	}
-
-	/**
-	 * 字符串转字节数组
-	 */
-	private byte[] string2ByteArray(String str) {
-		return Base64.getDecoder().decode(str);
 	}
 
 	/**

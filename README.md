@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.4</version>
+        <version>2.0.5</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -48,7 +48,9 @@
     4、behindExpiration：宽限期。此属性表示缓存到期后，会在这个时间范围内随机失效，避免缓存大范围同时失效。
     5、capitalExpiration：基础时间。此属性表示在当前指定类型(秒/分钟/小时/日/月/年)内，缓存一直有效。
     6、nullable：缓存“null”(默认true)。方法返回了“null(包含异常导致)” 时，仍然缓存。
-    7、remark：缓存备注。
+    7、shared：共享式缓存数据。
+    8、remark：缓存备注。
+
 
 ### 五、@EnableCacheIsolation 属性说明
 
@@ -225,3 +227,7 @@
     优化支持隔离策略；
     支持Feign、MyBatis等声明式调用数据缓存；
     异步方式缓存数据，提高返回速度。
+
+#### 2.0.5(2023/08/22)
+    支持共享式缓存数据;
+    修复方法的入参数为Map和Collection的实现类时，哈希值判定异常问题；
