@@ -70,7 +70,7 @@ public class RedisDataHelper implements DataHelper {
 
 						String statisticsLockKey = getIntactCacheStatisticsLockKey(cacheKey);
 						try {
-							redisUtil.lock(statisticsLockKey, Integer.MAX_VALUE, true);
+							redisUtil.lock(statisticsLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 							String methodSignature = statisticsNode.getMethodSignature();
 							CacheStatisticsModel statisticsModel =
 									increaseStatistics(getCacheStatistics(methodSignature), statisticsNode);
@@ -121,7 +121,7 @@ public class RedisDataHelper implements DataHelper {
 		if (!hit) {
 			try {
 				// 缓存未命中或数据已过期，加锁再次尝试获取
-				redisUtil.lock(dataLockKey, Integer.MAX_VALUE, true);
+				redisUtil.lock(dataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 				cacheDataModel = getDataFromRedis(cacheKey, false, shared);
 			}finally {
 				redisUtil.unlock(dataLockKey);
@@ -260,7 +260,7 @@ public class RedisDataHelper implements DataHelper {
 					dataModel.getCacheHashCode(), dataModel.getId()); // 缓存key
 			String redisDataLockKey = getIntactDataLockKey(cacheKey);
 			try {
-				redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
+				redisUtil.lock(redisDataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 				if (!dataModel.isExpired()) {
 					dataModel.expired();
 				}
@@ -298,7 +298,7 @@ public class RedisDataHelper implements DataHelper {
 	public void wipeStatistics(CacheStatisticsModel statisticsModel) {
 		String statisticsLockKey = getIntactCacheStatisticsLockKey(statisticsModel.getCacheKey());
 		try {
-			redisUtil.lock(statisticsLockKey, Integer.MAX_VALUE, true);
+			redisUtil.lock(statisticsLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 			deleteStatisticsFromRedis(statisticsModel.getMethodSignature());
 		} catch (InterruptedException e) {
 			e.printStackTrace();
@@ -358,7 +358,7 @@ public class RedisDataHelper implements DataHelper {
 			}
 			if ((isNotNull(saveData, nullable))) {
 				try {
-					redisUtil.lock(redisDataLockKey, Integer.MAX_VALUE, true);
+					redisUtil.lock(redisDataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 					log(String.format(	"\n ************* CacheData *************" +
 										"\n ** -------- 刷新缓存至Redis ------- **" +
 										"\n 执行对象：%s" +

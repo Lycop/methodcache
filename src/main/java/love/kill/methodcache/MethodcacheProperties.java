@@ -17,6 +17,12 @@ public class MethodcacheProperties {
 	private boolean enable = false;
 
 	/**
+	 * Redis 锁超时时间
+	 *
+	 */
+	private int redisLockTimeout = 30000;
+
+	/**
 	 * 开启日志
 	 */
 	private boolean enableLog = false;
@@ -69,6 +75,14 @@ public class MethodcacheProperties {
 
 	public void setEnable(boolean enable) {
 		this.enable = enable;
+	}
+
+	public int getRedisLockTimeout() {
+		return redisLockTimeout;
+	}
+
+	public void setRedisLockTimeout(int redisLockTimeout) {
+		this.redisLockTimeout = redisLockTimeout;
 	}
 
 	public boolean isEnableLog() {

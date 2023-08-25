@@ -14,14 +14,22 @@ public class DataUtil {
 
 		Map<String, Integer> fieldHash = new LinkedHashMap<>();
 		try {
+			StringBuilder integration = new StringBuilder();
 			for (int i = 0; i < args.length; i++) {
 				Object arg = args[i];
-				fieldHash.put("arg" + i, doGetHash(arg));
+				String key = "arg" + i;
+				Integer value = doGetHash(arg);
+				fieldHash.put(key, value);
+				integration.append(key).append("=").append(value).append("&");
+			}
+
+			if(integration.toString().length() > 0){
+				integration.deleteCharAt(integration.lastIndexOf("&"));
+				fieldHash.put("aggregation", doGetHash(integration.toString()));
 			}
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
 		}
-
 		return fieldHash.hashCode();
 	}
 

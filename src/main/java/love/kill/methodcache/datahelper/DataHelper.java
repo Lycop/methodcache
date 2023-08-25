@@ -117,8 +117,10 @@ public interface DataHelper {
 		try {
 			sharedCacheDataLock.readLock().lock();
 			Map<Integer, WeakReference<CacheDataModel>> cacheDataModelMap = sharedCacheData.get(methodSignature);
-			if (cacheDataModelMap != null) {
-				return cacheDataModelMap.get(cacheHashCode).get();
+			WeakReference<CacheDataModel> cacheDataModelWeakReference;
+			if (cacheDataModelMap != null &&
+					(cacheDataModelWeakReference = cacheDataModelMap.get(cacheHashCode)) != null) {
+				return cacheDataModelWeakReference.get();
 			}
 		}finally {
 			sharedCacheDataLock.readLock().unlock();
@@ -140,7 +142,8 @@ public interface DataHelper {
 			String methodSignature = cacheDataModel.getMethodSignature();
 			int cacheHashCode = cacheDataModel.getCacheHashCode();
 
-			Map<Integer, WeakReference<CacheDataModel>> cacheDataModelMap = sharedCacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
+			Map<Integer, WeakReference<CacheDataModel>> cacheDataModelMap =
+					sharedCacheData.computeIfAbsent(methodSignature, k -> new HashMap<>());
 			cacheDataModelMap.put(cacheHashCode, new WeakReference<>(cacheDataModel));
 
 		} finally {
