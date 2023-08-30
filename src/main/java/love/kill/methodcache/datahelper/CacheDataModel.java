@@ -98,6 +98,9 @@ public class CacheDataModel implements Serializable {
 	}
 
 	public Object getData() {
+		if(data instanceof DataHelper.NullObject){
+			return null;
+		}
 		return data;
 	}
 
