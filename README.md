@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.5</version>
+        <version>2.0.6</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -52,9 +52,10 @@
     8、remark：缓存备注。
 
 
-### 五、@EnableCacheIsolation 属性说明
+### 五、@CacheIsolation 属性说明
 
-    1、isolationStrategy：隔离级别，'N'表示不隔离，'T'表示线程隔离，默认 N。该注解为类上注解，隔离策略对当前类下，被 @CacheIsolation 注解的方法生效。
+    1、isolationStrategy：隔离级别，'N'表示不隔离，'T'表示线程隔离，默认 N。开启线程隔离后，该方法(及后续调用方法)的缓存数据，仅对产生该缓存数据的线程可见。
+
 
 ### 六、@DeleteData 属性说明
 
@@ -231,3 +232,8 @@
 #### 2.0.5(2023/08/22)
     支持共享式缓存数据;
     修复方法的入参数为Map和Collection的实现类时，哈希值判定异常问题；
+
+#### 2.0.6(2023/11/16)
+    增加入参哈希复杂度；
+    Redis 存储的模式下，支持配置 Redis 锁超时时间(默认30秒)；
+    修复BUG：@CacheData 开启 "nullable" 时，可能会返回 ClassCastException 异常。
