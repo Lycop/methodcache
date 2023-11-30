@@ -10,7 +10,7 @@ import java.util.*;
  */
 public class DataUtil {
 
-	public static int getArgsHashCode(Object[] args) {
+	public static int getArgsHashCode(Object[] args) throws IllegalAccessException {
 
 		Map<String, Integer> fieldHash = new LinkedHashMap<>();
 		try {
@@ -18,19 +18,19 @@ public class DataUtil {
 			for (int i = 0; i < args.length; i++) {
 				Object arg = args[i];
 				String key = "arg" + i;
-				Integer value = doGetHash(arg);
-				fieldHash.put(key, value);
-				integration.append(key).append("=").append(value).append("&");
+				fieldHash.put(key, doGetHash(arg));
+				integration.append(key).append("=").append(arg).append("&");
 			}
 
 			if(integration.toString().length() > 0){
 				integration.deleteCharAt(integration.lastIndexOf("&"));
 				fieldHash.put("aggregation", doGetHash(integration.toString()));
 			}
+			return doGetHash(fieldHash);
 		} catch (IllegalAccessException e) {
 			e.printStackTrace();
+			throw e;
 		}
-		return fieldHash.hashCode();
 	}
 
 	private static int doGetHash(Object arg) throws IllegalAccessException {

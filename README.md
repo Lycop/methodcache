@@ -237,3 +237,6 @@
     增加入参哈希复杂度；
     Redis 存储的模式下，支持配置 Redis 锁超时时间(默认30秒)；
     修复BUG：@CacheData 开启 "nullable" 时，可能会返回 ClassCastException 异常。
+
+#### 2.0.6(2023/11/30)
+    增加入参哈希复杂度。
