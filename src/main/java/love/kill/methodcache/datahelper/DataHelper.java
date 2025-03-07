@@ -1,13 +1,16 @@
 package love.kill.methodcache.datahelper;
 
+import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.util.DataUtil;
+import love.kill.methodcache.util.DateUtil;
 import love.kill.methodcache.util.ThreadPoolBuilder;
+import org.aopalliance.intercept.MethodInvocation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
-import java.io.Serializable;
+import java.io.*;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -21,7 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public interface DataHelper {
 
-	SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	Logger logger = LoggerFactory.getLogger(DataHelper.class);
 
 	/**
 	 * 缓存key
@@ -39,6 +42,11 @@ public interface DataHelper {
 	String KEY_SEPARATION_CHARACTER = "@";
 
 	/**
+	 * 刷新数据任务执行器
+	 */
+	ExecutorService refreshDataExecutorService = Executors.newFixedThreadPool(10);
+
+	/**
 	 * 缓存统计线程池
 	 */
 	ExecutorService recordStatisticsExecutorService = ThreadPoolBuilder.buildDefaultThreadPool();
@@ -48,12 +56,6 @@ public interface DataHelper {
 	 * */
 	ThreadLocal<String> threadLocal = new ThreadLocal<>();
 
-
-	/**
-	 * 共享式缓存数据
-	 * 内容：《方法签名,《缓存哈希值,数据》》
-	 */
-	Map<String, Map<Integer, WeakReference<CacheDataModel>>> sharedCacheData = new ConcurrentHashMap<>();
 
 	/**
 	 * 共享式缓存数据锁
@@ -70,36 +72,95 @@ public interface DataHelper {
 		 * @return 请求数据
 		 * @throws Throwable 发起实际请求时发生的异常
 		 */
-		Object getActualData() throws Throwable;
-
-		/**
-		 * 数据过期时间，时间戳
-		 *
-		 * @return 过期时间
-		 */
-		long getExpirationTime();
+		ActualDataModel getActualData() throws Throwable;
 	}
 
 	/**
 	 * 获取数据
 	 *
 	 * @param proxy                代理对象
-	 * @param method               方法
-	 * @param args                 请求参数
+	 * @param methodInvocation     方法引用
 	 * @param isolationSignal      隔离标记
 	 * @param refreshData          是否刷新数据
 	 * @param actualDataFunctional 请求模型
 	 * @param id                   缓存ID
 	 * @param remark               缓存备注
-	 * @param nullable             缓存null
+	 * @param cacheNull             缓存null
 	 * @param shared               共享式数据
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
 	 */
-	Object getData(Object proxy, Method method, Object[] args, String isolationSignal, boolean refreshData,
-				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean nullable,
+	CacheDataModel getData(Object proxy, MethodInvocation methodInvocation, String isolationSignal, boolean refreshData,
+				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean cacheNull,
 				   boolean shared) throws Throwable;
 
+
+	/**
+	 * 刷新数据
+	 *
+	 * @param proxy        			  执行对象
+	 * @param cacheDataModel          数据模型
+	 * @param actualDataFunctional    真实数据请求
+	 * @param nullable                返回值允许为空
+	 */
+	default void refreshData(final Object proxy, final CacheDataModel cacheDataModel,
+							 ActualDataFunctional actualDataFunctional, boolean nullable) {
+
+		refreshDataExecutorService.execute(() -> {
+
+			if(cacheDataModel == null){
+				return;
+			}
+
+
+			String methodSignature = cacheDataModel.getMethodSignature();
+			String args = cacheDataModel.getArgs();
+			int cacheHashCode = cacheDataModel.getCacheHashCode();
+			Object data = cacheDataModel.getData();
+			long expireTime = cacheDataModel.getExpireTime();
+			String id = cacheDataModel.getId();
+			String remark = cacheDataModel.getRemark();
+
+			if(data == null){
+				try {
+					ActualDataModel actualData = actualDataFunctional.getActualData();
+					data = actualData.getData();
+					expireTime = actualData.getExpirationTime();
+				} catch (Throwable throwable) {
+					throwable.printStackTrace();
+				}
+			}
+
+			CacheDataModel refreshCacheDataModel = new CacheDataModel(getCacheName(), methodSignature, args,
+					cacheHashCode, data, expireTime, id, remark);
+
+			if (!StringUtils.isEmpty(id)) {
+				refreshCacheDataModel.setId(id);
+			}
+
+			if (!StringUtils.isEmpty(remark)) {
+				refreshCacheDataModel.setRemark(remark);
+			}
+
+			if ((isNotNull(refreshCacheDataModel.getData(), nullable))) {
+				doRefreshData(proxy, refreshCacheDataModel);
+			}
+		});
+	}
+
+	/**
+	 * 刷新数据
+	 *
+	 * @param proxy        			  	执行对象
+	 * @param cacheDataModel        	数据模型
+	 */
+	void doRefreshData(Object proxy, CacheDataModel cacheDataModel);
+
+	/**
+	 * 共享式缓存数据
+	 * 内容：＜方法签名,＜缓存哈希值,数据＞＞
+	 */
+	Map<String, Map<Integer, WeakReference<CacheDataModel>>> sharedCacheData = new ConcurrentHashMap<>();
 
 	/**
 	 * 获取共享数据
@@ -175,7 +236,7 @@ public interface DataHelper {
 	 * @param match 匹配规则
 	 * @return key
 	 */
-	Map<String, Map<String, Object>> getCaches(String match);
+	Map<String, Object> getCaches(String match, int pageSize, int pageNo);
 
 	/**
 	 * 清空数据
@@ -184,7 +245,7 @@ public interface DataHelper {
 	 * @param cacheHashCode 缓存哈希值
 	 * @return 删除的缓存
 	 */
-	Map<String, Map<String, Object>> wipeCache(String id, String cacheHashCode);
+	Map<String, Object> wipeCache(String id, String cacheHashCode);
 
 	/**
 	 * 获取缓存统计
@@ -229,22 +290,61 @@ public interface DataHelper {
 	Map<String, CacheStatisticsModel> wipeStatisticsAll();
 
 	/**
+	 * 获取应用名
+	 *
+	 * @return 应用名
+	 */
+	String getApplicationName();
+
+	/**
+	 * 获取方法缓存名
+	 *
+	 * @return 方法缓存名
+	 */
+	String getMethodCacheName();
+
+
+	/**
+	 * 获取方法缓存分组名
+	 *
+	 * @return 方法缓存分组名
+	 */
+	String getMethodcacheGroupName();
+
+
+	/**
+	 * 获取缓存名
+	 * 优先级：方法缓存分组名 ＞ 方法缓存名 ＞ 获取应用名 ＞ DEFAULT_CACHE_NAME
+	 *
+	 * @return 缓存名
+	 */
+	default String getCacheName() {
+		String cacheName;
+		if (!StringUtils.isEmpty(getMethodcacheGroupName())) {
+			cacheName = getMethodcacheGroupName();
+		} else if (!StringUtils.isEmpty(getMethodCacheName())) {
+			cacheName = getMethodCacheName();
+		} else if (!StringUtils.isEmpty(getApplicationName())) {
+			cacheName = getApplicationName();
+		} else {
+			cacheName = "DEFAULT_CACHE_NAME";
+		}
+		return cacheName;
+	}
+
+	/**
 	 * 获取缓存哈希值
 	 *
-	 * @param applicationName         应用名
-	 * @param methodSignatureHashCode 方法签名哈希值
-	 * @param argsHashCode            方法入参哈希值
-	 * @param extensionStr         	  扩展字符串
+	 * @param methodSignatureHashCode 	方法签名哈希值
+	 * @param argsHashCode            	方法入参哈希值
+	 * @param extensionStr         	  	扩展字符串
 	 * @return 缓存哈希值
 	 */
-	default int getCacheHashCode(String applicationName, int methodSignatureHashCode, int argsHashCode,
-								 String extensionStr) {
-		StringBuilder s = new StringBuilder(String.valueOf(methodSignatureHashCode) + String.valueOf(argsHashCode));
-		if (!StringUtils.isEmpty(applicationName)) {
-			s.insert(0,applicationName);
+	default int getCacheHashCode(int methodSignatureHashCode, int argsHashCode, String extensionStr) {
+		StringBuilder s = new StringBuilder(getCacheName() + String.valueOf(methodSignatureHashCode) +
+				String.valueOf(argsHashCode));
 
-		}
-		if(!StringUtils.isEmpty(extensionStr)){
+		if (!StringUtils.isEmpty(extensionStr)) {
 			s.append(extensionStr);
 		}
 		return DataUtil.hash(s.toString());
@@ -253,18 +353,14 @@ public interface DataHelper {
 	/**
 	 * 获取缓存key
 	 *
-	 * @param applicationName 应用名
 	 * @param methodSignature 方法签名
 	 * @param cacheHashCode   缓存哈希值
 	 * @param id              缓存ID
 	 * @return 缓存key
 	 */
-	default String getCacheKey(String applicationName, String methodSignature, int cacheHashCode, String id) {
-		StringBuilder cacheKey = new StringBuilder(methodSignature + KEY_SEPARATION_CHARACTER + cacheHashCode +
-				KEY_SEPARATION_CHARACTER + id);
-		if(!StringUtils.isEmpty(applicationName)){
-			cacheKey.insert(0,KEY_SEPARATION_CHARACTER).insert(0,applicationName);
-		}
+	default String getCacheKey(String methodSignature, int cacheHashCode, String id) {
+		StringBuilder cacheKey = new StringBuilder(getCacheName() + KEY_SEPARATION_CHARACTER + methodSignature +
+				KEY_SEPARATION_CHARACTER + cacheHashCode + KEY_SEPARATION_CHARACTER + id);
 		return cacheKey.toString();
 	}
 
@@ -276,7 +372,7 @@ public interface DataHelper {
 	 * @param select         过滤值
 	 */
 	@SuppressWarnings("unchecked")
-	default void filterDataModel(Map<String, Map<String, Object>> cacheMap, CacheDataModel cacheDataModel,
+	default void filterDataModel(Map<String, Object> cacheMap, CacheDataModel cacheDataModel,
 								 String select) {
 		if (!StringUtils.isEmpty(select)) {
 			String args = cacheDataModel.getArgs();
@@ -285,7 +381,7 @@ public interface DataHelper {
 			}
 		}
 
-		Map<String, Object> keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
+		Object keyMap = cacheMap.computeIfAbsent(cacheDataModel.getMethodSignature(), k -> {
 			Map<String, Object> map = new HashMap<>();
 			map.put("id", cacheDataModel.getId());
 			map.put("remark", cacheDataModel.getRemark());
@@ -293,7 +389,7 @@ public interface DataHelper {
 		});
 
 		List<Map<String, Object>> cacheInfoList =
-				(List<Map<String, Object>>) keyMap.computeIfAbsent("cache", k -> new ArrayList<>());
+				(List<Map<String, Object>>) ((Map<String, Object>)keyMap).computeIfAbsent("cache", k -> new ArrayList<>());
 
 		Map<String, Object> cacheInfo = new HashMap<>();
 		cacheInfo.put("hashCode", cacheDataModel.getCacheHashCode());
@@ -398,9 +494,10 @@ public interface DataHelper {
 								  long endTimestamp) {
 		recordStatisticsExecutorService.execute(() -> {
 			try {
-				cacheStatisticsInfoQueue.put(new CacheStatisticsNode(cacheKey, methodSignature, methodSignatureHashCode,
-						args, argsHashCode, cacheHashCode, id, remark, hit, invokeException, stackTraceOfException,
-						startTimestamp, endTimestamp));
+				CacheStatisticsNode cacheStatisticsNode = new CacheStatisticsNode(cacheKey, methodSignature,
+						methodSignatureHashCode, args, argsHashCode, cacheHashCode, id, remark, hit, invokeException,
+						stackTraceOfException, startTimestamp, endTimestamp);
+				cacheStatisticsInfoQueue.put(cacheStatisticsNode);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -449,7 +546,7 @@ public interface DataHelper {
 	 */
 	default String formatDate(long timeStamp) {
 		try {
-			return formatDate.format(new Date(timeStamp));
+			return  DateUtil.FORMAT_YYYY_MM_DD_HH_MM_SS.format(new Date(timeStamp));
 		} catch (Exception e) {
 			e.printStackTrace();
 			return String.valueOf(timeStamp);
@@ -462,7 +559,7 @@ public interface DataHelper {
 	 * @param stackTrace 异常栈
 	 * @return 异常信息
 	 */
-	default String printStackTrace(Object[] stackTrace) {
+	static String printStackTrace(Object[] stackTrace) {
 		if (stackTrace == null)
 			return "";
 
@@ -482,11 +579,10 @@ public interface DataHelper {
 	 * 输出异常栈
 	 *
 	 * @param throwable 异常
-	 * @param uuid      UUID
 	 * @return 异常信息
 	 */
-	default String printStackTrace(Throwable throwable, String uuid) {
-		return "UUID=[" + uuid + "];message=[" + throwable.getMessage() + "];stackTrace=" +
+	default String printStackTrace(Throwable throwable) {
+		return "message=[" + throwable.getMessage() + "] \n stackTrace=" +
 				Arrays.toString(throwable.getStackTrace()) + "]";
 	}
 
@@ -508,6 +604,63 @@ public interface DataHelper {
 		private static final long serialVersionUID = 1L;
 	}
 
+	/**
+	 * 打印日志
+	 *
+	 * @param info 内容
+	 */
+	default void log(String info, MethodcacheProperties methodcacheProperties, Logger logger) {
+		if (methodcacheProperties.isEnableLog()) {
+			logger.info(info);
+		}
+	}
+
+	/**
+	 * 实际请求模型
+	 * */
+	class ActualDataModel{
+
+		/**
+		 * 实际请求返回的数据
+		 */
+		private Object data;
+
+		/**
+		 * 数据过期时间(时间戳)
+		 */
+		private long expirationTime;
+
+		/**
+		 * 请求成功
+		 */
+		private boolean succeeded;
+
+
+
+		public Object getData() {
+			return data;
+		}
+
+		public void setData(Object data) {
+			this.data = data;
+		}
+
+		public long getExpirationTime() {
+			return expirationTime;
+		}
+
+		public void setExpirationTime(long expirationTime) {
+			this.expirationTime = expirationTime;
+		}
+
+		public boolean isSucceeded() {
+			return succeeded;
+		}
+
+		public void setSucceeded(boolean succeeded) {
+			this.succeeded = succeeded;
+		}
+	}
 
 	/**
 	 * 缓存统计信息节点

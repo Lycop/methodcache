@@ -23,7 +23,7 @@
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.6</version>
+        <version>2.0.7</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -76,14 +76,18 @@
       enable-log: true
       # 开启端点信息，默认false
       enable-endpoint: true
-      # 开启统计，默认false
-      enable-statistics: true
       # 内存监控，默认true（仅内存缓存方式生效）
       enable-memory-monitor: true
       # 内存告警阈值，百分比，取值范围：(0, 100)，默认：50（仅内存缓存方式生效）
       memory-threshold: 50
       # GC阈值，百分比，取值范围：(0, 100)，默认：50（仅内存缓存方式生效）
       gc-threshold: 50
+      # 统计
+      statistics:
+        # 开启统计，默认false
+        enable: true
+        # 分组名。缓存方式为Redis时生效，同Redis(host/port/database)下同分组统计互相可见。
+        group-name: CustomerServer
 
     # 其他配置
     spring:
@@ -103,10 +107,12 @@
 ### 九、API
 
 #### 1、查看缓存
-    【地址】：/methodcache/cache
+    【地址】：/method/cache
     【方法】：GET
     【入参】：
         match：模糊匹配，非必传。支持“方法签名”、“缓存ID”、“缓存哈希值”
+        pageSize：每页大小，默认20。
+        pageNo：当前页数，默认1。
     【出参】：
         args：请求入参
         data：缓存数据
@@ -116,7 +122,7 @@
 
 
 #### 2、清除指定缓存
-    【地址】：/methodcache/cache
+    【地址】：/method/cache
     【方法】：DELETE
     【入参】：
         id：缓存ID
@@ -125,18 +131,18 @@
 
 
 #### 3、清除所有缓存
-    【地址】：/methodcache/cache/all
+    【地址】：/method/cache/all
     【方法】：DELETE
     【入参】：无
     【出参】：已删除的缓存数据
 
 #### 4、查看统计信息
-    【地址】：/methodcache/statistics
+    【地址】：/method/cache/statistics
     【方法】：GET
     【入参】：
         match：模糊匹配，非必传。支持“方法签名”、“缓存ID”
-        order_by：排序，0-id，1-总次数，2-命中次数，3-未命中次数，4-命中时平均耗时，5-未命中时平均耗时
-        order_type：排序方式，0-升序，1-降序
+        orderBy：排序，0-id，1-总次数，2-命中次数，3-未命中次数，4-命中时平均耗时，5-未命中时平均耗时
+        orderType：排序方式，0-升序，1-降序
     【出参】：
         id：缓存ID
         remark：缓存备注
@@ -165,7 +171,7 @@
         timeOfLastException：最近一次发生异常时间
 
 #### 5、清空指定统计信息
-    【地址】：/methodcache/statistics
+    【地址】：/method/cache/statistics
     【方法】：DELETE
     【入参】：
         id：缓存ID
@@ -173,7 +179,7 @@
     【出参】：已清空的统计信息
 
 #### 6、清空所有缓存统计
-    【地址】：/methodcache/statistics/all
+    【地址】：/method/cache/statistics/all
     【方法】：DELETE
     【入参】：无
     【出参】：已清空的统计信息
@@ -213,12 +219,12 @@
 
 #### 2.0.1(2022/09/06)
     支持缓存统计；
-    支持内存回收(内存缓存模式)；
+    支持内存回收(内存缓存模式)。
 
 #### 2.0.2(2022/09/16)
     支持缓存删除(@DeleteData)；
     优化统计信息查询速度；
-    修复统计耗时不准确问题；
+    修复统计耗时不准确问题。
 
 #### 2.0.3(2023/07/12)
     支持隔离策略：缓存数据可见范围。N(one，默认)表示不隔离；T(hread)表示线程隔离，数据仅对缓存时的线程可见；
@@ -231,12 +237,13 @@
 
 #### 2.0.5(2023/08/22)
     支持共享式缓存数据;
-    修复方法的入参数为Map和Collection的实现类时，哈希值判定异常问题；
+    修复方法的入参数为Map和Collection的实现类时，哈希值判定异常问题。
 
 #### 2.0.6(2023/11/16)
     增加入参哈希复杂度；
     Redis 存储的模式下，支持配置 Redis 锁超时时间(默认30秒)；
     修复BUG：@CacheData 开启 "nullable" 时，可能会返回 ClassCastException 异常。
 
-#### 2.0.7(2023/11/30)
-    增加入参哈希复杂度。
+#### 2.0.7(2025/03/06)
+    支持分组；
+    支持请求结果断言；

@@ -34,6 +34,7 @@ import java.lang.reflect.Method;
 @ComponentScan(basePackages = {"love.kill.methodcache.controller"})
 public class MethodcacheAutoConfiguration {
 
+
 	@Bean
 	@ConditionalOnProperty(prefix = "methodcache", name = "cache-type", havingValue = "R")
 	@ConditionalOnMissingBean

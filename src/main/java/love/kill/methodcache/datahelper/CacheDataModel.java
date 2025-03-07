@@ -18,9 +18,9 @@ public class CacheDataModel implements Serializable {
 	private static SimpleDateFormat outPrintSimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	/**
-	 * 应用名
+	 * 缓存名
 	 */
-	private String applicationName;
+	private String cacheName;
 
 	/**
 	 * 方法签名
@@ -54,14 +54,14 @@ public class CacheDataModel implements Serializable {
 	private long expireTime;
 
 	/**
-	 * 备注
-	 */
-	private String remark;
-
-	/**
 	 * id
 	 */
 	private String id;
+
+	/**
+	 * 备注
+	 */
+	private String remark;
 
 	/**
 	 * 数据大小
@@ -69,20 +69,22 @@ public class CacheDataModel implements Serializable {
 	private long instanceSize = 0L;
 
 
-	public CacheDataModel(String applicationName, String methodSignature, String args, int cacheHashCode, Object data,
-						  long expireTime) {
-		this.applicationName = applicationName;
+	public CacheDataModel(String cacheName, String methodSignature, String args, int cacheHashCode, Object data,
+						  long expireTime, String id, String remark) {
+		this.cacheName = cacheName;
 		this.methodSignature = methodSignature;
 		this.args = args;
 		this.cacheHashCode = cacheHashCode;
 		this.data = data;
 		this.expireTime = expireTime;
+		this.id = id;
+		this.remark = remark;
 
 		refreshInstanceSize();
 	}
 
-	public String getApplicationName() {
-		return applicationName;
+	public String getCacheName() {
+		return cacheName;
 	}
 
 	public String getMethodSignature() {
@@ -130,7 +132,6 @@ public class CacheDataModel implements Serializable {
 		expireTime = new Date().getTime();
 	}
 
-
 	public String getId() {
 		return id;
 	}
@@ -163,8 +164,8 @@ public class CacheDataModel implements Serializable {
 				", data=" + data +
 				", cacheTime=" + formatDate(cacheTime) +
 				", expireTime=" + formatDate(expireTime) +
-				", remark=" + remark +
 				", id=" + id +
+				", remark=" + remark +
 				", instanceSize=" + instanceSize +
 				'}';
 	}

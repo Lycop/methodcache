@@ -1,5 +1,6 @@
 package love.kill.methodcache.controller;
 
+import love.kill.methodcache.constant.ControllerURI;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,7 +16,7 @@ import java.util.Map;
  */
 @ConditionalOnProperty(prefix = "methodcache", name = "enable-endpoint", havingValue = "true")
 @RestController
-@RequestMapping("/methodcache/version")
+@RequestMapping(ControllerURI.CACHE_VERSION)
 public class Version {
 	@GetMapping
 	public Map version() {

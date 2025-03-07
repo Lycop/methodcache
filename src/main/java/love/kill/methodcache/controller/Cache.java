@@ -1,5 +1,6 @@
 package love.kill.methodcache.controller;
 
+import love.kill.methodcache.constant.ControllerURI;
 import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -16,7 +17,7 @@ import java.util.Map;
  */
 @ConditionalOnProperty(prefix = "methodcache", name = "enable-endpoint", havingValue = "true")
 @RestController
-@RequestMapping("/methodcache/cache")
+@RequestMapping(ControllerURI.METHOD_CACHE)
 public class Cache {
 
 	@Autowired
@@ -26,11 +27,15 @@ public class Cache {
 	 * 查询所有缓存数据
 	 *
 	 * @param match 模糊匹配，支持：方法签名、缓存ID、缓存哈希值
+	 * @param pageSize 每页大小
+	 * @param pageNo 当前页数
 	 * @return 所有匹配成功的缓存
 	 */
 	@GetMapping
-	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match) {
-		return dataHelper.getCaches(match);
+	public Map<String, Object> get(@RequestParam(value = "match", required = false) String match,
+												@RequestParam(value = "pageSize", defaultValue = "20") int pageSize,
+												@RequestParam(value = "pageNo", defaultValue = "1") int pageNo) {
+		return dataHelper.getCaches(match, pageSize, pageNo);
 	}
 
 	/**
@@ -41,7 +46,7 @@ public class Cache {
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping
-	public Map<String, Map<String, Object>> delete(@RequestParam(value = "id", required = false) String id,
+	public Map<String, Object> delete(@RequestParam(value = "id", required = false) String id,
 												   @RequestParam(value = "hashcode", required = false) String hashCode) {
 		if (StringUtils.isEmpty(id) && StringUtils.isEmpty(hashCode)) {
 			return new HashMap<>();
@@ -55,7 +60,7 @@ public class Cache {
 	 * @return 删除的缓存
 	 */
 	@DeleteMapping("/all")
-	public Map<String, Map<String, Object>> deleteAll() {
+	public Map<String, Object> deleteAll() {
 		return dataHelper.wipeCache(null, null);
 	}
 }

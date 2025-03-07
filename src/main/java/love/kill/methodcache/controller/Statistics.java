@@ -1,5 +1,6 @@
 package love.kill.methodcache.controller;
 
+import love.kill.methodcache.constant.ControllerURI;
 import love.kill.methodcache.datahelper.CacheStatisticsModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,7 @@ import java.util.TreeMap;
  */
 @ConditionalOnProperty(prefix = "methodcache", name = "enable-endpoint", havingValue = "true")
 @RestController
-@RequestMapping("/methodcache/statistics")
+@RequestMapping(ControllerURI.CACHE_STATISTICS)
 public class Statistics {
 
 	@Autowired
@@ -34,8 +35,8 @@ public class Statistics {
 	 */
 	@GetMapping
 	public Map<String, Map<String, Object>> get(@RequestParam(value = "match", required = false) String match,
-												@RequestParam(value = "order_by", required = false) String orderBy,
-												@RequestParam(value = "order_type", required = false) String orderType) {
+												@RequestParam(value = "orderBy", required = false) String orderBy,
+												@RequestParam(value = "orderType", required = false) String orderType) {
 
 		Map<String, CacheStatisticsModel> statistics = dataHelper.getStatistics(match);
 

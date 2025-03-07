@@ -7,7 +7,14 @@ package love.kill.methodcache.constant;
  * @author Lycop
  */
 public class IsolationStrategy {
-    public static final char NONE = 'N'; // 不隔离
-    public static final char THREAD = 'T'; // 线程隔离
+	/**
+	 * 不隔离
+	 */
+	public static final char NONE = 'N';
+
+	/**
+	 * 线程隔离
+	 */
+	public static final char THREAD = 'T';
 }
 

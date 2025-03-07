@@ -30,7 +30,7 @@ public class SerializeUtil {
 			return bos.toByteArray();
 		} catch (IOException e) {
 			e.printStackTrace();
-			logger.error("序列化时发生异常：" + e.getMessage());
+			logger.error("序列化时发生异常:{}", e);
 			return null;
 		}
 	}
@@ -38,16 +38,17 @@ public class SerializeUtil {
 	/**
 	 * 反序列化
 	 *
-	 * @param bytes 序列化结果
-	 * @return 序列化对象
+	 * @param bytes 					反序列化结果
+	 * @return 							反序列化对象
+	 * @throws ClassNotFoundException  	不存在的反序列化对象
 	 **/
-	public static Object deserialize(byte[] bytes) {
+	public static Object deserialize(byte[] bytes) throws ClassNotFoundException {
 		try {
 			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
 			return new ObjectInputStream(bis).readObject();
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (IOException e) {
 			e.printStackTrace();
-			logger.error("反序列化时发生异常：" + e.getMessage());
+			logger.error("反序列化时发生异常:{}", e);
 			return null;
 		}
 	}

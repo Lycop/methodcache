@@ -86,8 +86,18 @@ public @interface CacheData {
 	 * 为 true 时，缓存命中后返回的数据(如果是个对象)则是共享的，修改数据会影响其他的线程得到的数据，内存占用率较低。
 	 *
 	 * @return 缓存数据为共享
-	 * */
+	 */
 	boolean shared() default false;
+
+	/**
+	 * 返回结果断言
+	 * 应为 {@link love.kill.methodcache.annotation.ResultDataAssert} 的实现类。配置了此项，在执行完"实际的接口"调用，都会调用
+	 * {@link love.kill.methodcache.annotation.ResultDataAssert#assertResultData(Object)} (Object)} 方法，根据返回结果判定
+	 * 请求是否正常。
+	 *
+	 * @return 结果断言类
+	 */
+	Class<?> resultDataAssert() default void.class;
 
 	/**
 	 * 备注

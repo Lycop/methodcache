@@ -7,14 +7,19 @@ import org.springframework.core.Ordered;
 public class MethodcacheProperties {
 
 	/**
+	 * 开启缓存
+	 */
+	private boolean enable = false;
+
+	/**
 	 * 名称
 	 */
 	private String name;
 
 	/**
-	 * 开启缓存
+	 * 分组名
 	 */
-	private boolean enable = false;
+	private String groupName;
 
 	/**
 	 * Redis 锁超时时间
@@ -61,6 +66,14 @@ public class MethodcacheProperties {
 	private int order = Ordered.LOWEST_PRECEDENCE;
 
 
+	public boolean isEnable() {
+		return enable;
+	}
+
+	public void setEnable(boolean enable) {
+		this.enable = enable;
+	}
+
 	public String getName() {
 		return name;
 	}
@@ -69,12 +82,12 @@ public class MethodcacheProperties {
 		this.name = name;
 	}
 
-	public boolean isEnable() {
-		return enable;
+	public String getGroupName() {
+		return groupName;
 	}
 
-	public void setEnable(boolean enable) {
-		this.enable = enable;
+	public void setGroupName(String groupName) {
+		this.groupName = groupName;
 	}
 
 	public int getRedisLockTimeout() {
@@ -144,8 +157,10 @@ public class MethodcacheProperties {
 	@Override
 	public String toString() {
 		return "MethodcacheProperties{" +
-				"name='" + name + '\'' +
-				", enable=" + enable +
+				"enable=" + enable +
+				", name='" + name + '\'' +
+				", groupName='" + groupName + '\'' +
+				", redisLockTimeout=" + redisLockTimeout +
 				", enableLog=" + enableLog +
 				", enableEndpoint=" + enableEndpoint +
 				", enableStatistics=" + enableStatistics +
