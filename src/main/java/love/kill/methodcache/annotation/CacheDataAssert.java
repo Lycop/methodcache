@@ -4,14 +4,13 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 /**
- * (实际的)请求返回值断言
+ * 缓存断言
  *
  * @author Lycop
  * @version 1.0.0
  * @since 1.0
  */
-public interface ResultDataAssert<T> extends DataAssert<T> {
-
+public interface CacheDataAssert<T> extends DataAssert<T> {
 	/**
 	 * 判断数据类型是否符合泛型
 	 *
@@ -23,7 +22,7 @@ public interface ResultDataAssert<T> extends DataAssert<T> {
 		for (Type type : genericInterfaces) {
 			if (type instanceof ParameterizedType) {
 				ParameterizedType parameterizedType = (ParameterizedType) type;
-				if (ResultDataAssert.class.equals(parameterizedType.getRawType())) {
+				if (CacheDataAssert.class.equals(parameterizedType.getRawType())) {
 					Class tClass = (Class) (parameterizedType.getActualTypeArguments()[0]);
 					return (tClass.isAssignableFrom(o.getClass()));
 				}

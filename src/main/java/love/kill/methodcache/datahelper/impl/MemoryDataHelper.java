@@ -166,7 +166,7 @@ public class MemoryDataHelper implements DataHelper {
 	@Override
 	public CacheDataModel getData(Object proxy, MethodInvocation methodInvocation, String isolationSignal, boolean refreshData,
 						  ActualDataFunctional actualDataFunctional, String id, String remark,boolean cacheNull,
-						  boolean shared) throws Throwable {
+						  boolean shared, Class cacheDataAssert) throws Throwable {
 
 		Method method = methodInvocation.getMethod();
 		Object[] arguments = methodInvocation.getArguments();
@@ -182,18 +182,22 @@ public class MemoryDataHelper implements DataHelper {
 		String cacheKey = getCacheKey(methodSignature, cacheHashCode, id);
 
 		CacheDataModel cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode, shared);
-		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
-		if (!hit) {
-			try {
-				// 加锁再次获取
-				cacheDataLock.lock();
-				cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode, shared);
-			}finally {
-				cacheDataLock.unlock();
+		boolean hit = cacheDataModel != null && !cacheDataModel.isExpired();
+		boolean approved = hit && doCacheDataAssert(cacheDataModel.getData(), cacheDataAssert);
+		if (!hit || !approved) {
+			if(!hit){
+				// 缓存未命中或数据已过期，加锁再次尝试获取
+				try {
+					cacheDataLock.lock();
+					cacheDataModel = getDataFromMemory(methodSignature, cacheHashCode, shared);
+					hit = cacheDataModel != null && !cacheDataModel.isExpired();
+					approved = hit && doCacheDataAssert(cacheDataModel.getData(), cacheDataAssert);
+				}finally {
+					cacheDataLock.unlock();
+				}
 			}
 
-			hit = (cacheDataModel != null && !cacheDataModel.isExpired());
-			if (!hit) {
+			if (!hit || !approved) {
 				// 发起实际请求
 				ActualDataModel actualDataModel;
 				Object actualData; // 实际请求返回的数据

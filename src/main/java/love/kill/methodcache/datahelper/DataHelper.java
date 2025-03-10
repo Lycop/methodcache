@@ -1,6 +1,9 @@
 package love.kill.methodcache.datahelper;
 
 import love.kill.methodcache.MethodcacheProperties;
+import love.kill.methodcache.annotation.CacheDataAssert;
+import love.kill.methodcache.annotation.DataAssert;
+import love.kill.methodcache.annotation.ResultDataAssert;
 import love.kill.methodcache.util.DataUtil;
 import love.kill.methodcache.util.DateUtil;
 import love.kill.methodcache.util.ThreadPoolBuilder;
@@ -63,6 +66,13 @@ public interface DataHelper {
 	ReentrantReadWriteLock sharedCacheDataLock = new ReentrantReadWriteLock();
 
 	/**
+	 * 代理类
+	 *
+	 * 值：＜被代理类(或接口), 代理类＞
+	 */
+	Map<Class , WeakReference<DataAssert>> resultDataAssertInstance = new ConcurrentHashMap<>();
+
+	/**
 	 * 请求模型
 	 */
 	interface ActualDataFunctional {
@@ -85,14 +95,15 @@ public interface DataHelper {
 	 * @param actualDataFunctional 请求模型
 	 * @param id                   缓存ID
 	 * @param remark               缓存备注
-	 * @param cacheNull             缓存null
+	 * @param cacheNull            缓存null
 	 * @param shared               共享式数据
+	 * @param cacheDataAssert      缓存数据断言
 	 * @return 数据
 	 * @throws Exception 获取数据时发生异常
 	 */
 	CacheDataModel getData(Object proxy, MethodInvocation methodInvocation, String isolationSignal, boolean refreshData,
 				   ActualDataFunctional actualDataFunctional, String id, String remark, boolean cacheNull,
-				   boolean shared) throws Throwable;
+				   boolean shared, Class cacheDataAssert) throws Throwable;
 
 
 	/**
@@ -228,6 +239,90 @@ public interface DataHelper {
 		}
 		cacheDataModel = null; // help GC
 		return sharedData;
+	}
+
+
+	/**
+	 * 断言缓存数据
+	 *
+	 * @param cacheData            请求返回数据
+	 * @param resultDataAssertClass 断言实现类
+	 * @return 请求返回值断言结果
+	 */
+	default boolean doCacheDataAssert(Object cacheData, Class resultDataAssertClass) {
+		if (resultDataAssertClass != void.class) {
+			DataAssert dataAssert = getDataAssertInstance(resultDataAssertClass);
+			if (!(dataAssert instanceof CacheDataAssert)) {
+				// 一般不会进入
+				logger.warn("获取断言缓存数据实例异常：" + dataAssert);
+				return true;
+			}
+
+			CacheDataAssert cacheDataAssert = (CacheDataAssert) dataAssert;
+			if (!cacheDataAssert.isClass(cacheData)) {
+				logger.warn("断言方法的参数类型不一致");
+				return true;
+			}
+
+			return cacheDataAssert.doAssert(cacheData);
+		}
+		return true;
+	}
+
+	/**
+	 * 断言请求返回数据
+	 *
+	 * @param resultData            请求返回数据
+	 * @param resultDataAssertClass 断言实现类
+	 * @return 请求返回值断言结果
+	 */
+	default boolean doResultDataAssert(Object resultData, Class resultDataAssertClass){
+		if(resultDataAssertClass != void.class){
+			DataAssert dataAssert = getDataAssertInstance(resultDataAssertClass);
+			if (!(dataAssert instanceof ResultDataAssert)) {
+				// 一般不会进入
+				logger.warn("获取断言请求返回数据实例异常：" + dataAssert);
+				return true;
+			}
+
+			ResultDataAssert resultDataAssert = (ResultDataAssert) dataAssert;
+			if (!resultDataAssert.isClass(resultData)) {
+				logger.warn("断言方法的参数类型不一致");
+				return true;
+			}
+
+			return resultDataAssert.doAssert(resultData);
+		}
+		return true;
+	}
+
+	/**
+	 * 获取断言实例
+	 */
+	default DataAssert getDataAssertInstance(Class assertClass) {
+		try {
+			WeakReference<DataAssert> dataAssertWeakReference = resultDataAssertInstance.get(assertClass);
+			DataAssert dataAssert;
+			if (dataAssertWeakReference != null && (dataAssert = dataAssertWeakReference.get()) != null) {
+				return dataAssert;
+			}
+			synchronized (resultDataAssertInstance) {
+				dataAssertWeakReference = resultDataAssertInstance.get(assertClass);
+				if (dataAssertWeakReference != null && (dataAssert = dataAssertWeakReference.get()) != null) {
+					return dataAssert;
+				}
+
+				Object instance = assertClass.newInstance();
+				if (instance instanceof DataAssert) {
+					dataAssert = (DataAssert) instance;
+					resultDataAssertInstance.put(assertClass, new WeakReference<>(dataAssert));
+					return dataAssert;
+				}
+			}
+		} catch (InstantiationException | IllegalAccessException e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	/**

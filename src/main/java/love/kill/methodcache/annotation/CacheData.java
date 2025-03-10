@@ -90,14 +90,29 @@ public @interface CacheData {
 	boolean shared() default false;
 
 	/**
-	 * 返回结果断言
-	 * 应为 {@link love.kill.methodcache.annotation.ResultDataAssert} 的实现类。配置了此项，在执行完"实际的接口"调用，都会调用
-	 * {@link love.kill.methodcache.annotation.ResultDataAssert#assertResultData(Object)} (Object)} 方法，根据返回结果判定
-	 * 请求是否正常。
+	 * (实际的)请求返回值断言
 	 *
-	 * @return 结果断言类
+	 * 应为 {@link love.kill.methodcache.annotation.ResultDataAssert} 的实现类。若配置了此项，实际请求完成后，都会调用
+	 * {@link love.kill.methodcache.annotation.ResultDataAssert#doAssert(Object)} 方法，会将请求的返回值作为参数传入，
+	 * 如果认为这次请求的返回值是成功且有效的，应该返回"true"，反之返回"false"。
+	 *
+	 * 需要注意的是：无论断言结果是否为true，都不影响本次请求的返回值。如果断言为"false"，本次的返回值将不进行缓存。
+	 *
+	 * @return 请求返回值断言
 	 */
 	Class<?> resultDataAssert() default void.class;
+
+	/**
+	 * 缓存断言
+	 *
+	 * 应为 {@link love.kill.methodcache.annotation.CacheDataAssert} 的实现类。若配置了此项，当取得缓存数据后，都会
+	 * 调用{@link love.kill.methodcache.annotation.CacheDataAssert#doAssert(Object)} 方法，会将缓存数据作为参数传
+	 * 入，如果认为这次该缓存数据是有效的，应该返回"true"，反之返回"false"。如果返回"false"，将不使用缓存数据，并发起一次实
+	 * 际请求。
+	 *
+	 * @return 请求返回值断言
+	 */
+	Class<?> cacheDataAssert() default void.class;
 
 	/**
 	 * 备注

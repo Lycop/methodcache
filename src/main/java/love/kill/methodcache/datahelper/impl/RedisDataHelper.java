@@ -97,7 +97,7 @@ public class RedisDataHelper implements DataHelper {
 	@Override
 	public CacheDataModel getData(Object proxy, MethodInvocation methodInvocation, String isolationSignal, boolean refreshData,
 						  ActualDataFunctional actualDataFunctional, String id, String remark, boolean cacheNull,
-						  boolean shared) throws Throwable {
+						  boolean shared, Class cacheDataAssert) throws Throwable {
 
 		Method method = methodInvocation.getMethod();
 		Object[] arguments = methodInvocation.getArguments();
@@ -114,18 +114,22 @@ public class RedisDataHelper implements DataHelper {
 		String dataLockKey = getIntactDataLockKey(cacheKey); // 数据锁
 
 		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false, shared);
-		boolean hit = (cacheDataModel != null && !cacheDataModel.isExpired());
-		if (!hit) {
-			try {
+		boolean hit = cacheDataModel != null && !cacheDataModel.isExpired();
+		boolean approved = hit && doCacheDataAssert(cacheDataModel.getData(), cacheDataAssert);
+		if (!hit || !approved) {
+			if(!hit){
 				// 缓存未命中或数据已过期，加锁再次尝试获取
-				redisUtil.lock(dataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
-				cacheDataModel = getDataFromRedis(cacheKey, false, shared);
-			} finally {
-				redisUtil.unlock(dataLockKey);
+				try {
+					redisUtil.lock(dataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
+					cacheDataModel = getDataFromRedis(cacheKey, false, shared);
+					hit = (cacheDataModel != null && !cacheDataModel.isExpired());
+					approved = hit && doCacheDataAssert(cacheDataModel.getData(), cacheDataAssert);
+				} finally {
+					redisUtil.unlock(dataLockKey);
+				}
 			}
 
-			hit = (cacheDataModel != null && !cacheDataModel.isExpired());
-			if (!hit) {
+			if (!hit || !approved) {
 				// 发起实际请求
 				ActualDataModel actualDataModel;
 				Object actualData; // 实际请求返回的数据

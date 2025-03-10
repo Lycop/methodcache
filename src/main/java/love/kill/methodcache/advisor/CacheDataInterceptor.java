@@ -3,7 +3,6 @@ package love.kill.methodcache.advisor;
 import love.kill.methodcache.MethodcacheProperties;
 import love.kill.methodcache.annotation.CacheData;
 import love.kill.methodcache.annotation.CapitalExpiration;
-import love.kill.methodcache.annotation.ResultDataAssert;
 import love.kill.methodcache.datahelper.CacheDataModel;
 import love.kill.methodcache.datahelper.DataHelper;
 import love.kill.methodcache.util.AnnotationUtil;
@@ -13,10 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * CacheData 拦截通知
@@ -45,15 +42,6 @@ public class CacheDataInterceptor implements MethodInterceptor {
 	 * 值：＜被代理类(或接口), 代理类＞
 	 */
 	private static Map<Class<?> ,Class<?>> targetProxyClass = new HashMap<>();
-
-
-	/**
-	 * 代理类
-	 *
-	 * 值：＜被代理类(或接口), 代理类＞
-	 */
-	private static Map<Class , WeakReference<ResultDataAssert>> resultDataAssertInstance = new ConcurrentHashMap<>();
-
 
 	public CacheDataInterceptor(MethodcacheProperties methodcacheProperties, DataHelper dataHelper) {
 		this.methodcacheProperties = methodcacheProperties;
@@ -109,7 +97,8 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		CapitalExpiration capitalExpiration = cacheData.capitalExpiration(); // 数据过期时间累加基础
 		boolean nullable = cacheData.nullable(); // 空返回
 		boolean shared = cacheData.shared(); // 共享式缓存
-		Class assertClass = cacheData.resultDataAssert(); // 断言
+		Class resultDataAssert = cacheData.resultDataAssert(); // 断言实际的请求的返回值
+		Class cacheDataAssert = cacheData.cacheDataAssert(); // 断言缓存
 		String remark = cacheData.remark();
 		String id = cacheData.id();
 
@@ -123,7 +112,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 			@Autowired
 			public DataHelper.ActualDataModel getActualData() throws Throwable {
 
-				DataHelper.ActualDataModel dataModel = new DataHelper.ActualDataModel();
+				DataHelper.ActualDataModel dataModel;
 				Object data = null;
 				boolean assertSucceeded = true; // 断言成功
 				boolean throwException = false; // 抛出异常
@@ -133,7 +122,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 					dataModel = new DataHelper.ActualDataModel();
 					dataModel.setData(data);
 					dataModel.setExpirationTime(expirationTime(expiration, behindExpiration, capitalExpiration));
-					dataModel.setSucceeded(assertSucceeded = assertResultData(assertClass, data));
+					dataModel.setSucceeded(assertSucceeded = dataHelper.doResultDataAssert(data, resultDataAssert));
 					return dataModel;
 				} catch (Throwable t) {
 					t.printStackTrace();
@@ -190,7 +179,7 @@ public class CacheDataInterceptor implements MethodInterceptor {
 		};
 
 		CacheDataModel cacheDataModel = dataHelper.getData(proxy, methodInvocation, isolationSignal, refresh,
-				actualDataFunctional, id, remark, nullable, shared);
+				actualDataFunctional, id, remark, nullable, shared, cacheDataAssert);
 
 		Object data = cacheDataModel.getData();
 
@@ -209,56 +198,6 @@ public class CacheDataInterceptor implements MethodInterceptor {
 				logger);
 
 		return cacheDataModel.getData();
-	}
-
-	/**
-	 * 断言请求返回数据
-	 *
-	 */
-	private boolean assertResultData(Class assertClass, Object resultData){
-		if(assertClass != void.class){
-			ResultDataAssert assertInstance = getAssertInstance(assertClass);
-			if (assertInstance == null) {
-				logger.warn("获取断言实例异常：null");
-				return true;
-			}
-			if (!assertInstance.isTClass(resultData)) {
-				logger.warn("断言方法的参数类型不一致");
-				return true;
-			}
-			return assertInstance.assertResultData(resultData);
-		}
-		return true;
-	}
-
-
-	/**
-	 * 获取断言实例
-	 */
-	private ResultDataAssert getAssertInstance(Class assertClass) {
-		try {
-			WeakReference<ResultDataAssert> assertObjWeakReference = resultDataAssertInstance.get(assertClass);
-			ResultDataAssert assertObj;
-			if (assertObjWeakReference != null && (assertObj = assertObjWeakReference.get()) != null) {
-				return assertObj;
-			}
-			synchronized (resultDataAssertInstance) {
-				assertObjWeakReference = resultDataAssertInstance.get(assertClass);
-				if (assertObjWeakReference != null && (assertObj = assertObjWeakReference.get()) != null) {
-					return assertObj;
-				}
-
-				Object instance = assertClass.newInstance();
-				if (instance instanceof ResultDataAssert) {
-					assertObj = (ResultDataAssert) instance;
-					resultDataAssertInstance.put(assertClass, new WeakReference<>(assertObj));
-					return assertObj;
-				}
-			}
-		} catch (InstantiationException | IllegalAccessException e) {
-			e.printStackTrace();
-		}
-		return null;
 	}
 
 	/**
