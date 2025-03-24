@@ -13,24 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package love.kill.methodcache.annotation;
+package love.kill.methodcache.redis;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 
-/**
- * (实际的)请求返回值断言
- *
- * @author Lycop
- * @version 1.0.0
- * @since 1.0
- */
-public interface DataAssert<T> {
+public interface MCRedisConnectionFactory extends RedisConnectionFactory {
 
-	/**
-	 * 断言
-	 */
-	default boolean doAssert(T data){
-		return true;
-	}
 }

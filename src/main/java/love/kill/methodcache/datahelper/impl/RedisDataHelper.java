@@ -1,3 +1,18 @@
+/*
+ * Copyright 2025 Lycop
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package love.kill.methodcache.datahelper.impl;
 
 import love.kill.methodcache.MethodcacheProperties;
@@ -48,11 +63,6 @@ public class RedisDataHelper implements DataHelper {
 	 * 锁前缀
 	 */
 	private static final String REDIS_LOCK_PREFIX = "REDIS_LOCK_";
-
-	/**
-	 * 异常方法调用 key
-	 */
-	private static final String EXCEPTION_METHOD_INVOCATION = "EXCEPTION_METHOD_INVOCATION";
 
 
 	public RedisDataHelper(MethodcacheProperties methodcacheProperties,
@@ -111,14 +121,13 @@ public class RedisDataHelper implements DataHelper {
 			id = String.valueOf(methodSignature.hashCode());
 		}
 		String cacheKey = getCacheKey(methodSignature, cacheHashCode, id); // 构建缓存key
-		String dataLockKey = getIntactDataLockKey(cacheKey); // 数据锁
-
 		CacheDataModel cacheDataModel = getDataFromRedis(cacheKey, false, shared);
 		boolean hit = cacheDataModel != null && !cacheDataModel.isExpired();
 		boolean approved = hit && doCacheDataAssert(cacheDataModel.getData(), cacheDataAssert);
 		if (!hit || !approved) {
 			if(!hit){
 				// 缓存未命中或数据已过期，加锁再次尝试获取
+				String dataLockKey = getIntactDataLockKey(cacheKey); // 数据锁
 				try {
 					redisUtil.lock(dataLockKey, methodcacheProperties.getRedisLockTimeout(), true);
 					cacheDataModel = getDataFromRedis(cacheKey, false, shared);

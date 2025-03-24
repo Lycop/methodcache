@@ -1,29 +1,28 @@
-### 一、什么是MethodCache
+### 一、什么是 MethodCache
 
-**MethodCache**是一个基于SpringBoot的非侵入式**方法结果缓存**开源组件。根据入参对方法的返回值进行缓存，在数据有效期内再次以同样入参请求时，会返回缓存中的返回值。
+**MethodCache**是一个专为 Spring Boot 项目设计的轻量级**方法级缓存**框架，支持 “内存” 和 “Redis” 两种缓存存储介质。它提供了丰富的注解，如 @CacheData 用于缓存方法返回值，@DeleteData 用于清除指定标识的缓存数据。同时，项目还具备完善的统计功能，可查看缓存的命中情况、耗时统计以及异常信息等。
 
 
-### 二、为什么要开发MethodCache
+### 二、MethodCache 能做什么
 
 #### 减少重复调用：
-&emsp;&emsp;为了确保响应速度，及降低服务器压力，我们要尽可能减少服务之间、方法之间不必要及重复的调用。  
-&emsp;&emsp;早期，我们通过接口规划与代码重构来避免此类问题。随着业务发展，服务在增多，服务的代码量越来越大，各服务之间的调用也愈加错综复杂。致使我们不得不花费更多的时间进行接口规划与代码重构，每次代码重构又可能引发其他更多问题。如：【方法A】和【方法B】需要调用同一个下游服务的方法【方法C】。在业务调整后，【方法A/B】被调整到同一次业务请求(同一个页面的两个请求)，导致【方法C】被调用两次。此时需要对这【方法A】和【方法B】进行代码重构。<u>*如果【方法A/B】又作为下游被调用，那么重构成本将以指数型在增加*</u>，显然这不是一个好的方案。  
-&emsp;&emsp;经过反复思考，我们决定变换思路：<font color=red>允许重复调用</font>。  
-&emsp;&emsp;在“业务允许的时间”内对【方法A】的返回值进行临时缓存，入参命中则返回缓存中的数据，<font color=red>而非对发起重复的调用</font>。
+&emsp;&emsp;微服务之间、服务内的方法之间都存在调用关系，这个微服务和服务内的方法之间可能会存在重复的调用。假设【方法A】调用【方法B】和【方法C】，如果【方法B】也调用了【方法C】，那么就会导致【方法C】被调用了2次。
+&emsp;&emsp;早期，我们通过接口规划与代码重构来避免此类问题。随着业务发展，微服务在增多，服务的代码量越来越大，各服务之间的调用也愈加错综复杂。致使我们不得不花费更多的时间进行接口规划与代码重构，每次代码重构又可能引发其他更多问题。如：【方法A】和【方法B】需要调用同一个下游服务的方法【方法C】。在业务调整后，【方法A/B】被调整到同一次业务请求(同一个页面的两个请求)，导致【方法C】被调用两次。此时需要对这【方法A】和【方法B】进行代码重构。<u>*如果【方法A/B】又作为下游被调用，那么重构成本将以指数型在增加*</u>，显然这不是一个好的方案。
+&emsp;&emsp;经过反复思考，我们决定变换思路：<font color=red>允许代码上的"重复"调用</font>。在<u>业务允许的时间</u>内对方法的返回值进行临时缓存，根据入参命中返回缓存中的数据，<font color=red>而非对发起重复的调用</font>。
 
 #### 静态数据缓存：
 &emsp;&emsp;项目中往往会存在一个或多个不经常更新的数据。例如banner推广、文章等等。每次用户打开页面，都会对数据库发起一次读请求。我们可以通过缓存方式存储下来，但这些数据更新频率并不是固定的，普通的缓存方案会导致数据更新后，存在一定程度的延迟问题。  
 &emsp;&emsp;我们需要支持“清除”功能的缓存方案：第一位用户查询时，将数据缓存起来。当配置对应的内容(banner推广、文章等等)后，会自动清除这个内容对应的缓存，下一位用户请求时，就能重新将新数据放入缓存中。
 
 
-### 三、快速开始
+### 三、如何使用 MethodCache
 
 1、引入jar包
     
     <dependency>
         <groupId>love.kill</groupId>
         <artifactId>methodcache-spring-boot-starter</artifactId>
-        <version>2.0.7</version>
+        <version>2.1.0</version>
     </dependency>
 
 2、在配置(application.yml)中开启缓存
@@ -66,12 +65,19 @@
 
     # 方法缓存
     methodcache:
-    # 缓存应用名称，若为空则取 ${spring.application.name}
-    #  name: demo-for-methodcache
+      # 缓存应用名称，若为空则取 ${spring.application.name}
+      name: demo-for-methodcache
+      # 分组名，同一分组下的缓存相互可见
+      groupName: demo-groupname-for-methodcache
       # 开启缓存。true：开启，false(默认)：关闭。
       enable: true
       # 缓存方式。(M)emory：内存，(R)edis：redis，默认 M
       cache-type: R
+      # Redis配置（仅缓存方式cache-type为Redis时生效)
+      redis:
+        database: 1
+        host: 127.0.0.1
+        port: 6378
       # 输出日志(info级别)。true：开启，false(默认)：关闭
       enable-log: true
       # 开启端点信息，默认false
@@ -88,14 +94,6 @@
         enable: true
         # 分组名。缓存方式为Redis时生效，同Redis(host/port/database)下同分组统计互相可见。
         group-name: CustomerServer
-
-    # 其他配置
-    spring:
-      # Redis相关配置(仅Redis缓存方式生效)
-      redis:
-        database: 1
-        host: 127.0.0.1
-        port: 6378
 
 
 ### 八、DEMO
@@ -194,25 +192,18 @@
       cache-type: M
 
 &emsp;&emsp;内存方式不需要很多的配置和额外的环境，就可以将**MethodCache**快速集成到您的项目中。  
-&emsp;&emsp;使用内存作为缓存存储介质，缓存数据和统计数据均会被保存在内存中。这就意味着当您的应用重启后，缓存的数据和统计数据将会消失。如果您对这些数据很重视，那么建议使用Redis方式。
+&emsp;&emsp;使用内存作为缓存存储介质，方法的返回值和统计数据均会被保存在内存中。这就意味着当您的应用重启后，缓存的数据和统计数据将会消失。如果您对这些数据很重视，那么建议使用Redis方式。
 
 #### 2、Redis方式(推荐)
     methodcache:
       cache-type: R
-    
-&emsp;&emsp;**MethodCache**使用*RedisTemplate*作为操作Redis的工具。因此，需要在配置文件(application.yml)中指定RedisTemplate相关配置。  
-&emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，那么这个对象应该是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
+
+&emsp;&emsp;当选择Redis作为缓存存储介质，方法的返回值和统计数据将会被存储到Redis中。如果这个返回值是一个自定义的对象，请确保这个对象是可序列化的(Serializable)，否则可能会报错：<font color=red>NotSerializableException</font>。
 
 
 ### 十一、运行环境
     Java 8+
     Spring Boot 2.x 及以上
-
-
-### 最后
-
-&emsp;&emsp;使用过程中，如果有问题或者建议，欢迎联系我(i@kill.love)。也欢迎大家一起加入并完善本项目。 ：）
-
 
 
 ## 更新日志
@@ -244,6 +235,7 @@
     Redis 存储的模式下，支持配置 Redis 锁超时时间(默认30秒)；
     修复BUG：@CacheData 开启 "nullable" 时，可能会返回 ClassCastException 异常。
 
-#### 2.0.7(2025/03/06)
+#### 2.1.0(2025/03/06)
     支持分组；
     支持请求结果断言；
+    Redis调整为独立的连接，避免占用业务Redis；
