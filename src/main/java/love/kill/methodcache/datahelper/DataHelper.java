@@ -313,6 +313,8 @@ public interface DataHelper {
 
 	/**
 	 * 获取断言实例
+	 * @param assertClass 断言实现类Class
+	 * @return  断言实现类实例
 	 */
 	default DataAssert getDataAssertInstance(Class assertClass) {
 		try {
@@ -343,7 +345,9 @@ public interface DataHelper {
 	/**
 	 * 获取缓存数据
 	 *
-	 * @param match 匹配规则
+	 * @param match 	匹配规则
+	 * @param pageSize 	分页大小
+	 * @param pageNo 	当前页
 	 * @return key
 	 */
 	Map<String, Object> getCaches(String match, int pageSize, int pageNo);
@@ -717,7 +721,9 @@ public interface DataHelper {
 	/**
 	 * 打印日志
 	 *
-	 * @param info 内容
+	 * @param info 					内容
+	 * @param methodcacheProperties 配置
+	 * @param logger 				logger
 	 */
 	default void log(String info, MethodcacheProperties methodcacheProperties, Logger logger) {
 		if (methodcacheProperties.isEnableLog()) {

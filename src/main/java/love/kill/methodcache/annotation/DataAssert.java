@@ -29,6 +29,9 @@ public interface DataAssert<T> {
 
 	/**
 	 * 断言
+	 *
+	 * @param data 请求返回数据
+	 * @return 	断言结果
 	 */
 	default boolean doAssert(T data){
 		return true;
