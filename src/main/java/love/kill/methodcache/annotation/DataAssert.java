@@ -15,9 +15,6 @@
  */
 package love.kill.methodcache.annotation;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-
 /**
  * (实际的)请求返回值断言
  *
@@ -30,7 +27,7 @@ public interface DataAssert<T> {
 	/**
 	 * 断言
 	 *
-	 * @param data 请求返回数据
+	 * @param data 待断言的数据
 	 * @return 	断言结果
 	 */
 	default boolean doAssert(T data){
