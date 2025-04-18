@@ -48,7 +48,9 @@
     5、capitalExpiration：基础时间。此属性表示在当前指定类型(秒/分钟/小时/日/月/年)内，缓存一直有效。
     6、nullable：缓存“null”(默认true)。方法返回了“null(包含异常导致)” 时，仍然缓存。
     7、shared：共享式缓存数据。
-    8、remark：缓存备注。
+    8、resultDataAssert：(实际的)请求返回值断言，断言为true则缓存当前返回值，为false则不进行缓存。
+    9、cacheDataAssert：断言缓存数据，断言为true则返回缓存数据，为false则放弃当前缓存并重新发起请求。
+    10、remark：缓存备注。
 
 
 ### 五、@CacheIsolation 属性说明
